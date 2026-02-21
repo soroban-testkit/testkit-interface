@@ -1,10 +1,50 @@
 # Contributing to RemitLend
 
-First off, thank you for considering contributing to RemitLend! It's people like you who make RemitLend a great tool for providing fair lending access to migrant workers.
+First off, thank you for considering contributing to RemitLend! It's people like you who make RemitLend a powerful tool for providing fair lending access to migrant workers worldwide.
+
+## 📋 Table of Contents
+
+- [Code of Conduct](#code-of-conduct)
+- [How Can I Contribute?](#how-can-i-contribute)
+- [Branching Strategy](#branching-strategy)
+- [Development Workflow](#development-workflow)
+- [Style Guides](#style-guides)
+- [Project Structure](#project-structure)
+- [Testing Guidelines](#testing-guidelines)
+- [Commit Message Guidelines](#commit-message-guidelines)
 
 ## Code of Conduct
 
-By participating in this project, you agree to abide by our Code of Conduct. Please be respectful, inclusive, and professional in all interactions.
+By participating in this project, you agree to maintain a respectful, inclusive, and harassment-free environment for everyone. We are committed to providing a welcoming experience for contributors of all backgrounds and skill levels.
+
+### Our Standards
+
+- Use welcoming and inclusive language
+- Be respectful of differing viewpoints and experiences
+- Gracefully accept constructive criticism
+- Focus on what is best for the community
+- Show empathy towards other community members
+
+## How Can I Contribute?
+
+### Reporting Bugs
+
+Before creating bug reports, please check existing issues to avoid duplicates. When creating a bug report, include as many details as possible:
+
+- **Use a clear and descriptive title** for the issue
+- **Describe the exact steps to reproduce the problem**
+- **Provide specific examples** to demonstrate the steps
+- **Describe the behavior you observed** and what you expected to see
+- **Include screenshots or animated GIFs** if relevant
+- **Include your environment details**: OS, Node version, browser, wallet extension
+
+### Suggesting Enhancements
+
+Enhancement suggestions are tracked as GitHub issues. When creating an enhancement suggestion:
+
+- **Use a clear and descriptive title**
+- **Provide a detailed description** of the suggested enhancement
+- **Explain why this enhancement would be useful** to RemitLend users
 
 ## Branching Strategy
 
@@ -16,55 +56,56 @@ To keep our repository organized, please follow this naming convention for your 
 
 *Note: Always branch off of the latest `main` branch.*
 
-## Local Development Expectations
+## Development Workflow
 
-Before submitting a Pull Request, you must ensure that your code meets our quality standards:
+1. **Fork the repository** and create your branch from `main`
+2. **Setup your environment** (see README.md)
+3. **Write clear, commented code** following our style guides
+4. **Add tests** if you've added new features or logic
+5. **Update documentation** if you've changed APIs or functionality
+6. **Ensure all tests pass** before submitting
+7. **Run linters** (`npm run lint`, `cargo fmt`)
+8. **Write a clear PR description** explaining your changes
 
-1. **Frontend (`frontend/`)**:
-   - Run `npm run lint` and ensure there are no warnings or errors.
-   - Run `npm run format` (if available) to ensure code style consistency.
-2. **Backend (`backend/`)**:
-   - Run `npm run lint`.
-   - Run the test suite using `npm run test` and verify all tests pass.
-3. **Smart Contracts (`contracts/`)**:
-   - Run `cargo fmt` to auto-format your Rust code.
-   - Run `cargo clippy` and resolve any warnings.
-   - Run `cargo test` to ensure all contract logic remains intact.
+### Local Quality Standards
 
-See the [README.md](README.md) for full instructions on setting up your local environment.
+Before submitting a Pull Request, verify:
+- **Frontend**: `npm run lint` and `npm run format` (if available).
+- **Backend**: `npm run lint` and `npm run test`.
+- **Contracts**: `cargo fmt`, `cargo clippy`, and `cargo test`.
 
-## Styleguides
+## Style Guides
 
 ### Git Commit Messages
 
-We strictly follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This leads to more readable messages that are easy to follow when looking through the project history, and allows us to generate changelogs automatically.
+We strictly follow the [Conventional Commits](https://www.conventionalcommits.org/) specification:
 
 Format: `<type>(<scope>): <subject>`
+
+**Types:**
+- `feat`: New feature
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, missing semicolons, etc.)
+- `refactor`: Code refactoring
+- `test`: Adding or updating tests
+- `chore`: Maintenance tasks
 
 **Examples:**
 - `feat(contracts): add flash loan prevention to lending pool`
 - `fix(frontend): resolve wallet connection timeout`
 - `docs(readme): add docker setup instructions`
-- `test(backend): add coverage for credit score generation`
 
 ### Code Style
-- **TypeScript (Frontend/Backend)**: Use functional components and hooks for React. Prefer `interface` over `type` for object definitions. Ensure strict typing everywhere; avoid using `any`.
-- **Rust (Contracts)**: Always run `cargo fmt` and follow standard Rust naming conventions.
+- **TypeScript**: Use functional components and hooks. Prefer `interface` over `type`. Ensure strict typing.
+- **Rust**: Follow standard Rust naming conventions and run `cargo fmt`.
 
-## Pull Request Checklist
+## Project Structure
 
-When you are ready to open a Pull Request, please ensure you have completed the following checklist. Your PR description should confirm these steps:
-
-- [ ] I have pulled from `main` and resolved any merge conflicts locally.
-- [ ] My branch follows the established naming convention (`feat/`, `fix/`, etc.).
-- [ ] My commit messages follow the Conventional Commits specification.
-- [ ] I have run the appropriate linters and formatters (`npm run lint`, `cargo fmt`).
-- [ ] I have added or updated tests to cover my changes.
-- [ ] All existing and new tests pass successfully.
-- [ ] If my change affects functionality, I have updated the documentation (`README.md`, `ARCHITECTURE.md`, etc.).
+Refer to the `README.md` for a detailed breakdown of the monorepo structure.
 
 ## Review Process
 
 Once you submit your PR, a maintainer will review it. Be prepared to engage in discussion and make requested changes. Once approved, a maintainer will merge your code into `main`.
 
-Thank you for contributing to RemitLend!
+Thank you for contributing to RemitLend! 🚀
