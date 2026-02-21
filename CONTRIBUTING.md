@@ -1,54 +1,70 @@
 # Contributing to RemitLend
 
-First off, thank you for considering contributing to RemitLend! It's people like you who make RemitLend a great tool for migrant workers.
+First off, thank you for considering contributing to RemitLend! It's people like you who make RemitLend a great tool for providing fair lending access to migrant workers.
 
 ## Code of Conduct
 
-By participating in this project, you agree to abide by our Code of Conduct (TBD). Please be respectful and professional in all interactions.
+By participating in this project, you agree to abide by our Code of Conduct. Please be respectful, inclusive, and professional in all interactions.
 
-## How Can I Contribute?
+## Branching Strategy
 
-### Reporting Bugs
+To keep our repository organized, please follow this naming convention for your branches:
+- **Features**: `feat/short-description` (e.g., `feat/lender-dashboard`)
+- **Bug Fixes**: `fix/short-description` (e.g., `fix/nft-minting-error`)
+- **Documentation**: `docs/short-description` (e.g., `docs/update-architecture-diagram`)
+- **Refactoring**: `refactor/short-description` (e.g., `refactor/loan-state-machine`)
 
-- Use a clear and descriptive title for the issue.
-- Describe the exact steps which reproduce the problem in as many details as possible.
-- Explain which behavior you expected to see instead and why.
+*Note: Always branch off of the latest `main` branch.*
 
-### Suggesting Enhancements
+## Local Development Expectations
 
-- Use a clear and descriptive title for the issue.
-- Provide a step-by-step description of the suggested enhancement.
-- Explain why this enhancement would be useful to RemitLend users.
+Before submitting a Pull Request, you must ensure that your code meets our quality standards:
 
-### Pull Requests
+1. **Frontend (`frontend/`)**:
+   - Run `npm run lint` and ensure there are no warnings or errors.
+   - Run `npm run format` (if available) to ensure code style consistency.
+2. **Backend (`backend/`)**:
+   - Run `npm run lint`.
+   - Run the test suite using `npm run test` and verify all tests pass.
+3. **Smart Contracts (`contracts/`)**:
+   - Run `cargo fmt` to auto-format your Rust code.
+   - Run `cargo clippy` and resolve any warnings.
+   - Run `cargo test` to ensure all contract logic remains intact.
 
-1. Fork the repo and create your branch from `main`.
-2. If you've added code that should be tested, add tests.
-3. If you've changed APIs, update the documentation.
-4. Ensure the test suite passes.
-5. Make sure your code lints.
-6. Issue that Pull Request!
+See the [README.md](README.md) for full instructions on setting up your local environment.
 
 ## Styleguides
 
 ### Git Commit Messages
 
-- Use the present tense ("Add feature" not "Added feature")
-- Use the imperative mood ("Move cursor to..." not "Moves cursor to...")
-- Limit the first line to 72 characters or less
-- Reference issues and pull requests liberally after the first line
+We strictly follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This leads to more readable messages that are easy to follow when looking through the project history, and allows us to generate changelogs automatically.
 
-### TypeScript Styleguide
+Format: `<type>(<scope>): <subject>`
 
-- Use functional components and hooks for React.
-- Prefer `interface` over `type` for object definitions.
-- Maintain strict typing where possible.
+**Examples:**
+- `feat(contracts): add flash loan prevention to lending pool`
+- `fix(frontend): resolve wallet connection timeout`
+- `docs(readme): add docker setup instructions`
+- `test(backend): add coverage for credit score generation`
 
-### Rust Styleguide
+### Code Style
+- **TypeScript (Frontend/Backend)**: Use functional components and hooks for React. Prefer `interface` over `type` for object definitions. Ensure strict typing everywhere; avoid using `any`.
+- **Rust (Contracts)**: Always run `cargo fmt` and follow standard Rust naming conventions.
 
-- Run `cargo fmt` before committing.
-- Follow standard Rust naming conventions.
+## Pull Request Checklist
 
-## Development Setup
+When you are ready to open a Pull Request, please ensure you have completed the following checklist. Your PR description should confirm these steps:
 
-See the [README.md](README.md) for instructions on how to set up your local development environment.
+- [ ] I have pulled from `main` and resolved any merge conflicts locally.
+- [ ] My branch follows the established naming convention (`feat/`, `fix/`, etc.).
+- [ ] My commit messages follow the Conventional Commits specification.
+- [ ] I have run the appropriate linters and formatters (`npm run lint`, `cargo fmt`).
+- [ ] I have added or updated tests to cover my changes.
+- [ ] All existing and new tests pass successfully.
+- [ ] If my change affects functionality, I have updated the documentation (`README.md`, `ARCHITECTURE.md`, etc.).
+
+## Review Process
+
+Once you submit your PR, a maintainer will review it. Be prepared to engage in discussion and make requested changes. Once approved, a maintainer will merge your code into `main`.
+
+Thank you for contributing to RemitLend!
