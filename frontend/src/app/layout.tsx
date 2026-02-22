@@ -61,9 +61,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         {/* QueryProvider wraps the entire app so any component can use React Query hooks */}
         <QueryProvider>{children}</QueryProvider>
       </body>
