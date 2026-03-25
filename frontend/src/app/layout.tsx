@@ -4,6 +4,7 @@ import "./globals.css";
 import { QueryProvider } from "./components/providers/QueryProvider";
 import { DashboardShell } from "./components/global_ui/DashboardShell";
 import { Toaster } from "./components/ui/Toast";
+import { LevelUpModal } from "./components/gamification/LevelUpModal";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -67,6 +68,7 @@ export default function RootLayout({
         <QueryProvider>
           <DashboardShell>{children}</DashboardShell>
           <Toaster />
+          <LevelUpModal />
         </QueryProvider>
       </body>
     </html>
