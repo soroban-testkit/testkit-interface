@@ -103,6 +103,19 @@ export interface UserBalance {
   currency: string;
 }
 
+export interface CreditScoreHistory {
+  date: string;
+  score: number;
+  event?: string;
+}
+
+export interface YieldHistory {
+  date: string;
+  earnings: number;
+  apy: number;
+  principal?: number;
+}
+
 // ─── Loan hooks ───────────────────────────────────────────────────────────────
 
 /**
@@ -246,6 +259,40 @@ export function useUserBalance(
   return useQuery<UserBalance>({
     queryKey: queryKeys.user.balance(),
     queryFn: () => apiFetch<UserBalance>("/user/balance"),
+    ...options,
+  });
+}
+
+// ─── Chart data hooks ─────────────────────────────────────────────────────────
+
+/**
+ * Fetches credit score history for trend visualization.
+ * Returns historical score data points over time.
+ */
+export function useCreditScoreHistory(
+  userId: string | undefined,
+  options?: Omit<UseQueryOptions<CreditScoreHistory[]>, "queryKey" | "queryFn">,
+) {
+  return useQuery<CreditScoreHistory[]>({
+    queryKey: ["creditScoreHistory", userId],
+    queryFn: () => apiFetch<CreditScoreHistory[]>(`/score/${userId}/history`),
+    enabled: !!userId,
+    ...options,
+  });
+}
+
+/**
+ * Fetches yield earnings history for lenders.
+ * Returns historical yield performance data.
+ */
+export function useYieldHistory(
+  userId: string | undefined,
+  options?: Omit<UseQueryOptions<YieldHistory[]>, "queryKey" | "queryFn">,
+) {
+  return useQuery<YieldHistory[]>({
+    queryKey: ["yieldHistory", userId],
+    queryFn: () => apiFetch<YieldHistory[]>(`/yield/${userId}/history`),
+    enabled: !!userId,
     ...options,
   });
 }
