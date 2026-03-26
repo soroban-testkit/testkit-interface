@@ -5,6 +5,7 @@ import { QueryProvider } from "./components/providers/QueryProvider";
 import { DashboardShell } from "./components/global_ui/DashboardShell";
 import { Toaster } from "./components/ui/Toast";
 import { LevelUpModal } from "./components/gamification/LevelUpModal";
+import { ErrorBoundary } from "./components/global_ui/ErrorBoundary";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -73,7 +74,11 @@ export default function RootLayout({
       </head>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <QueryProvider>
-          <DashboardShell>{children}</DashboardShell>
+          <DashboardShell>
+            <ErrorBoundary scope="active page" variant="section">
+              {children}
+            </ErrorBoundary>
+          </DashboardShell>
           <Toaster />
           <LevelUpModal />
         </QueryProvider>
