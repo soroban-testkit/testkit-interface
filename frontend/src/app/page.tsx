@@ -1,7 +1,19 @@
 "use client";
 
-import { ArrowUpRight, ArrowDownLeft, Users, Activity, Clock, ExternalLink, WalletCards } from "lucide-react";
-import { useWalletStore, selectIsWalletConnected, selectWalletAddress } from "./stores/useWalletStore";
+import {
+  ArrowUpRight,
+  ArrowDownLeft,
+  Users,
+  Activity,
+  Clock,
+  ExternalLink,
+  WalletCards,
+} from "lucide-react";
+import {
+  useWalletStore,
+  selectIsWalletConnected,
+  selectWalletAddress,
+} from "./stores/useWalletStore";
 import { useLoans, useRemittances, useUserBalance } from "./hooks/useApi";
 import { DashboardSkeleton } from "./components/skeletons/DashboardSkeleton";
 import { CreditScoreGauge } from "./components/ui/CreditScoreGauge";
@@ -14,9 +26,7 @@ function ConnectWalletPrompt() {
         <WalletCards className="h-12 w-12 text-indigo-600 dark:text-indigo-400" />
       </div>
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-          Welcome to RemitLend
-        </h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Welcome to RemitLend</h1>
         <p className="mt-2 max-w-md text-zinc-500 dark:text-zinc-400">
           Connect your wallet to view your portfolio, active loans, and recent activity.
         </p>
@@ -34,7 +44,9 @@ export default function Home() {
   const address = useWalletStore(selectWalletAddress);
 
   const { data: loans, isLoading: loansLoading } = useLoans({ enabled: isConnected });
-  const { data: remittances, isLoading: remittancesLoading } = useRemittances({ enabled: isConnected });
+  const { data: remittances, isLoading: remittancesLoading } = useRemittances({
+    enabled: isConnected,
+  });
   const { data: balance, isLoading: balanceLoading } = useUserBalance({ enabled: isConnected });
 
   const isLoading = loansLoading || remittancesLoading || balanceLoading;
@@ -45,9 +57,8 @@ export default function Home() {
     const pendingCount = loans?.filter((l) => l.status === "pending").length ?? 0;
 
     const totalRemitted =
-      remittances
-        ?.filter((r) => r.status === "completed")
-        .reduce((sum, r) => sum + r.amount, 0) ?? 0;
+      remittances?.filter((r) => r.status === "completed").reduce((sum, r) => sum + r.amount, 0) ??
+      0;
 
     const netWorth = (balance?.available ?? 0) + (balance?.locked ?? 0);
 
@@ -69,7 +80,12 @@ export default function Home() {
   const recentActivity = useMemo(() => {
     const loanEvents =
       loans?.slice(0, 3).map((l) => ({
-        type: l.status === "active" ? "Loan Active" : l.status === "repaid" ? "Loan Repaid" : "Loan Request",
+        type:
+          l.status === "active"
+            ? "Loan Active"
+            : l.status === "repaid"
+              ? "Loan Repaid"
+              : "Loan Request",
         desc: `Loan #${l.id} — ${formatCurrency(l.amount)}`,
         amount: l.status === "repaid" ? `+${formatCurrency(l.amount)}` : formatCurrency(l.amount),
         time: new Date(l.createdAt).toLocaleDateString(),

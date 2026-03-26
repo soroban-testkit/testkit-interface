@@ -130,9 +130,7 @@ export function CreditScoreGauge({
       {delta !== null && delta !== 0 && (
         <div
           className={`flex items-center gap-1 text-xs font-medium ${
-            delta > 0
-              ? "text-green-600 dark:text-green-400"
-              : "text-red-600 dark:text-red-400"
+            delta > 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"
           }`}
         >
           {delta > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}

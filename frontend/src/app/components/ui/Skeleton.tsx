@@ -9,13 +9,7 @@ export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>
   return <div className={clsx(baseClasses, className)} {...props} />;
 }
 
-export function SkeletonText({
-  lines = 1,
-  className,
-}: {
-  lines?: number;
-  className?: string;
-}) {
+export function SkeletonText({ lines = 1, className }: { lines?: number; className?: string }) {
   return (
     <div className={clsx("space-y-2", className)}>
       {Array.from({ length: lines }).map((_, i) => (
