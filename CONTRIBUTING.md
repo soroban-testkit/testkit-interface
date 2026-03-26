@@ -7,100 +7,114 @@ This document provides a set of guidelines for contributing to RemitLend and its
 ## 📋 Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
-- [How Can I Contribute?](#how-can-i-contribute)
-- [Branching Strategy](#branching-strategy)
 - [Development Workflow](#development-workflow)
+- [Branching Strategy](#branching-strategy)
 - [Commit Message Guidelines](#commit-message-guidelines)
-- [Pull Request Process](#pull-request-process)
+- [Pull Request Standards](#pull-request-standards)
+- [Testing Requirements](#testing-requirements)
 - [Style Guides](#style-guides)
 
 ## Code of Conduct
 
 By participating in this project, you agree to maintain a respectful, inclusive, and harassment-free environment for everyone. We are committed to providing a welcoming experience for contributors of all backgrounds and skill levels.
 
-## How Can I Contribute?
+## Development Workflow
 
-### Reporting Bugs
+We follow a **Feature-Branch-to-Main** workflow. All development work should happen in feature branches and be merged into `main` via Pull Requests.
 
-Before creating bug reports, please check existing issues to avoid duplicates. When creating a bug report, include as many details as possible:
+```mermaid
+graph TD
+    Main[main branch] -->|Checkout| Feat[feat/your-feature]
+    Feat -->|Commits| Feat
+    Feat -->|Push| Remote[Remote Branch]
+    Remote -->|Open PR| PR[Pull Request]
+    PR -->|Review & CI| Merge[Merged to main]
+    Merge --> Main
+```
 
-- **Use a clear and descriptive title**
-- **Describe the exact steps to reproduce the problem**
-- **Include environment details** (OS, Node version, Browser, Wallet)
+### Steps to Contribute
 
-### Suggesting Enhancements
-
-Enhancement suggestions are tracked as GitHub issues. Provide a detailed description and explain why the enhancement would be useful.
+1. **Fork & Clone**: Fork the repository and clone it locally.
+2. **Branch**: Create a new branch from the latest `main`.
+3. **Develop**: Implement your changes, following code style and quality standards.
+4. **Test**: Ensure all tests pass (see [Testing Requirements](#testing-requirements)).
+5. **Commit**: Use [Conventional Commits](#commit-message-guidelines).
+6. **Push & PR**: Push your branch and open a Pull Request against `main`.
 
 ## Branching Strategy
 
-We follow a **Feature-Branch-to-Main** workflow. All development should happen on dedicated branches before being merged into the `main` branch.
+Follow these naming conventions for your branches:
 
-### Branch Naming Convention
-
-- `feat/`: New features (e.g., `feat/lender-dashboard`)
-- `fix/`: Bug fixes (e.g., `fix/nft-minting-error`)
-- `docs/`: Documentation changes (e.g., `docs/update-architecture`)
-- `refactor/`: Code improvements without behavior changes
-- `test/`: Adding or updating tests
-- `chore/`: Maintenance tasks
-
-### Workflow Steps
-
-1. **Sync**: Always ensure your local `main` is up-to-date.
-   ```bash
-   git checkout main
-   git pull origin main
-   ```
-2. **Branch**: Create a new branch for your task.
-   ```bash
-   git checkout -b feat/your-feature-name
-   ```
-3. **Draft**: Keep your commits small and focused.
+| Type | Prefix | Example |
+| :--- | :--- | :--- |
+| **Feature** | `feat/` | `feat/lender-dashboard` |
+| **Bug Fix** | `fix/` | `fix/nft-minting-error` |
+| **Docs** | `docs/` | `docs/update-api-guide` |
+| **Refactor** | `refactor/` | `refactor/loan-logic` |
+| **Performance**| `perf/` | `perf/optimize-queries` |
+| **Maintenance**| `chore/` | `chore/update-deps` |
 
 ## Commit Message Guidelines
 
-We strictly follow the [Conventional Commits](https://www.conventionalcommits.org/) specification. This allows for automated changelog generation and enforced standards.
+We strictly follow the [Conventional Commits](https://www.conventionalcommits.org/) specification.
 
-### Format
-`<type>(<scope>): <short summary>`
+**Format**: `<type>(<scope>): <subject>`
 
-- **type**: `feat`, `fix`, `docs`, `style`, `refactor`, `test`, `chore`.
-- **scope**: (Optional) The module affected (e.g., `contracts`, `frontend`, `backend`).
-- **subject**: Present tense, imperative mood (e.g., "add", not "added").
+### Common Types:
 
-### Examples
-- `feat(contracts): implement loan repayment logic`
-- `fix(frontend): resolve wallet disconnect on refresh`
-- `docs(wiki): add indexer synchronization guide`
+- **feat**: A new feature (corresponds to `MINOR` in Semantic Versioning).
+- **fix**: A bug fix (corresponds to `PATCH` in Semantic Versioning).
+- **docs**: Documentation only changes.
+- **style**: Changes that do not affect the meaning of the code (white-space, formatting, etc).
+- **refactor**: A code change that neither fixes a bug nor adds a feature.
+- **perf**: A code change that improves performance.
+- **test**: Adding missing tests or correcting existing tests.
+- **chore**: Changes to the build process or auxiliary tools and libraries.
 
-## Pull Request Process
+**Example**: `feat(contracts): add flash loan prevention to lending pool`
 
-1. **Fork & Branch**: Work on a fork and a feature branch.
-2. **Local Verification**: Ensure all tests and linters pass locally.
-   - **Frontend**: `npm run lint` and `npm run test`
-   - **Backend**: `npm run lint` and `npm test`
-   - **Contracts**: `cargo fmt --all -- --check` and `cargo test`
-3. **Submit PR**: Open a PR to the `main` branch of the target repository.
-4. **Description Checklist**:
-   - [ ] Link to the related Issue (e.g., `Closes #123`).
-   - [ ] Summary of changes.
-   - [ ] Screenshots/Gifs for UI changes.
-   - [ ] Verification steps (manual or automated).
-5. **CI Compliance**: All CI checks must pass before merging.
-6. **Review**: Address any comments from maintainers.
+## Pull Request Standards
+
+When opening a PR, ensure your description includes:
+- **Linked Issue**: Close the relevant issue (e.g., `Closes #123`).
+- **Description**: A clear summary of the changes.
+- **Testing**: Evidence that the changes were tested.
+- **Checklist**:
+    - [ ] Code follows project style guides.
+    - [ ] Tests have been added/updated and pass.
+    - [ ] Documentation has been updated.
+    - [ ] Commit messages follow standards.
+
+## Testing Requirements
+
+Before submitting, verify your changes by running:
+
+### Frontend (Next.js/React)
+```bash
+cd frontend
+npm run lint
+npm run test
+```
+
+### Backend (Node/Express)
+```bash
+cd backend
+npm run lint
+npm run test
+```
+
+### Contracts (Soroban/Rust)
+```bash
+cd contracts
+cargo fmt --check
+cargo clippy
+cargo test
+```
 
 ## Style Guides
 
-### Code Style
-- **TypeScript (Frontend/Backend)**: Use functional components, strict typing, and Prettier for formatting.
-- **Rust (Contracts)**: Follow standard Rust idioms and use `cargo clippy`.
-
-### Project Structure
-RemitLend is a monorepo:
-- `contracts/`: Soroban smart contracts (Rust).
-- `backend/`: Express.js indexer and API server.
-- `frontend/`: Next.js web application.
+- **TypeScript**: Use functional components and hooks. Prefer `interface` over `type`. Ensure strict typing.
+- **Rust**: Follow standard Rust naming conventions and maintain idiomatic code.
 
 ---
 Thank you for contributing to RemitLend! 🚀
