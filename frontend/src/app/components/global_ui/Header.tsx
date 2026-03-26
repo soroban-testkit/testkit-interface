@@ -3,6 +3,7 @@
 import { Bell, Menu, Search, User, Wallet } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { ThemeToggle } from "../ui/ThemeToggle";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -52,6 +53,8 @@ export function Header({ onMenuClick, className }: HeaderProps) {
         </button>
 
         <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800 hidden sm:block" />
+
+        <ThemeToggle />
 
         <button className="relative p-2 text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900">
           <Bell className="h-5 w-5" />
