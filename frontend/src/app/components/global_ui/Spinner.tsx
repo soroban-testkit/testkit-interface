@@ -12,12 +12,12 @@ const SIZE_MAP = {
   sm: 16,
   md: 24,
   lg: 40,
-};
+} as const;
 
 export const Spinner: FC<SpinnerProps> = ({
   type = "spin",
   color,
-  size = 24,
+  size = "md",
   duration = 1,
   delayStep = 0.2,
 }) => {
