@@ -159,7 +159,6 @@ export default function RemittancesPage() {
     const totalRemitted = completed.reduce((sum, r) => sum + r.amount, 0);
     const avgAmount = completed.length > 0 ? totalRemitted / completed.length : 0;
 
-
     // FIX: To satisfy the purity rule, we capture the time
     // only when the memoization triggers.
     // We use a constant here because useMemo is supposed to be idempotent.
