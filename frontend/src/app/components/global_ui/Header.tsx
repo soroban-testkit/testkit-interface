@@ -14,6 +14,7 @@ import { twMerge } from "tailwind-merge";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { NotificationDropdown } from "./NotificationDropdown";
 import { useWalletStore } from "../../stores/useWalletStore";
+import { useUserStore } from "../../stores/useUserStore";
 import { useGamificationStore } from "../../stores/useGamificationStore";
 import { useLoans, useRemittances } from "../../hooks/useApi";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -21,6 +22,14 @@ import { useTranslations, useLocale } from "next-intl";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+function truncateWalletAddress(address: string) {
+  if (address.length <= 10) {
+    return address;
+  }
+
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
 }
 
 interface HeaderProps {
@@ -33,8 +42,10 @@ export function Header({ onMenuClick, className }: HeaderProps) {
   const locale = useLocale();
   const t = useTranslations("Navigation");
   const isConnected = useWalletStore((state) => state.status === "connected");
+  const walletAddress = useWalletStore((state) => state.address);
   const setConnected = useWalletStore((state) => state.setConnected);
   const disconnect = useWalletStore((state) => state.disconnect);
+  const user = useUserStore((state) => state.user);
   const gamificationStore = useGamificationStore();
   const [query, setQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -214,6 +225,14 @@ export function Header({ onMenuClick, className }: HeaderProps) {
     }
   };
 
+  const profileLabel = user?.email
+    ? user.email
+    : user?.walletAddress
+      ? truncateWalletAddress(user.walletAddress)
+      : walletAddress
+        ? truncateWalletAddress(walletAddress)
+        : "Connect Wallet";
+
   return (
     <header
       className={cn(
@@ -338,7 +357,7 @@ export function Header({ onMenuClick, className }: HeaderProps) {
             <User className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
           </div>
           <div className="hidden md:block pr-2">
-            <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-50">John Doe</p>
+            <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-50">{profileLabel}</p>
           </div>
         </button>
       </div>
