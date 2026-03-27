@@ -213,7 +213,7 @@ function BalancesCard({ address, horizonUrl }: { address: string; horizonUrl: st
       <CardContent>
         {isLoading ? (
           <div className="flex justify-center py-8">
-            <Spinner size="md" />
+            <Spinner size={16} type="spin" />
           </div>
         ) : isError ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
@@ -312,7 +312,7 @@ function TransactionHistoryCard({
       <CardContent>
         {isLoading ? (
           <div className="flex justify-center py-8">
-            <Spinner size="md" />
+            <Spinner size={16} type="spin" />
           </div>
         ) : isError ? (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900/50 dark:bg-red-950/20">
