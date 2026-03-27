@@ -1,26 +1,34 @@
 import { FC } from "react";
 
 interface SpinnerProps {
-  type: "spin" | "bounce" | "double-spinner";
+  type?: "spin" | "bounce" | "double-spinner";
   color?: string;
-  size?: number;
+  size?: number | "sm" | "md" | "lg";
   duration?: number;
   delayStep?: number;
 }
 
+const sizeMap = {
+  sm: 16,
+  md: 24,
+  lg: 32,
+} as const;
+
 export const Spinner: FC<SpinnerProps> = ({
-  type,
+  type = "spin",
   color,
-  size = 24,
+  size = "md",
   duration = 1,
   delayStep = 0.2,
 }) => {
+  const resolvedSize = typeof size === "number" ? size : sizeMap[size];
+
   if (type === "spin") {
     return (
       <div
         style={{
-          width: size + "px",
-          height: size + "px",
+          width: resolvedSize + "px",
+          height: resolvedSize + "px",
           borderColor: color || "white",
           borderTopColor: "transparent",
           borderStyle: "solid",
@@ -36,8 +44,8 @@ export const Spinner: FC<SpinnerProps> = ({
         {/* Outer Spinner */}
         <div
           style={{
-            width: size + "px",
-            height: size + "px",
+            width: resolvedSize + "px",
+            height: resolvedSize + "px",
             borderColor: color || "white",
             borderTopColor: "transparent",
             borderStyle: "solid",
@@ -50,8 +58,8 @@ export const Spinner: FC<SpinnerProps> = ({
         {/* Inner Spinner (reverse) */}
         <div
           style={{
-            width: size * 0.6 + "px",
-            height: size * 0.6 + "px",
+            width: resolvedSize * 0.6 + "px",
+            height: resolvedSize * 0.6 + "px",
             borderColor: color || "white",
             borderTopColor: "transparent",
             borderStyle: "solid",
@@ -72,8 +80,8 @@ export const Spinner: FC<SpinnerProps> = ({
           <div
             key={i}
             style={{
-              width: size + "px",
-              height: size + "px",
+              width: resolvedSize + "px",
+              height: resolvedSize + "px",
               backgroundColor: color || "white",
               animationDuration: `${duration}s`,
               animationDelay: `${i * delayStep}s`,
