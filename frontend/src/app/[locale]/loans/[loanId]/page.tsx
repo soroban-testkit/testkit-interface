@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ChevronRight, ExternalLink, Wallet } from "lucide-react";
-import { LoanDetailSkeleton } from "../../components/skeletons/LoanDetailSkeleton";
-import { useLoan } from "../../hooks/useApi";
+import { LoanDetailSkeleton } from "../../../components/skeletons/LoanDetailSkeleton";
+import { useLoan } from "../../../hooks/useApi";
 
 function formatCurrency(value: number) {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);

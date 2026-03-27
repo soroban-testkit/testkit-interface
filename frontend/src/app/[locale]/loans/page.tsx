@@ -60,7 +60,7 @@ export default function LoansPage() {
     if (!stats || stats.overdueCount === 0) return t("health.strong");
     if (stats.overdueCount <= 2) return t("health.watch");
     return t("health.atRisk");
-  }, [stats?.overdueCount, t]);
+  }, [stats, t]);
 
   if (isLoading) {
     return <LoansListSkeleton />;
@@ -180,10 +180,13 @@ export default function LoansPage() {
                   </div>
                   <div className="flex flex-wrap items-center gap-3 text-sm">
                     <span className="rounded-full bg-zinc-100 px-3 py-1 font-medium capitalize text-zinc-700 dark:bg-zinc-900 dark:text-zinc-300">
-                      {loan.displayStatus === "active" ? t("tabs.active") : 
-                       loan.displayStatus === "repaid" ? t("tabs.repaid") :
-                       loan.displayStatus === "defaulted" ? t("tabs.defaulted") :
-                       loan.displayStatus}
+                      {loan.displayStatus === "active"
+                        ? t("tabs.active")
+                        : loan.displayStatus === "repaid"
+                          ? t("tabs.repaid")
+                          : loan.displayStatus === "defaulted"
+                            ? t("tabs.defaulted")
+                            : loan.displayStatus}
                     </span>
                     <span className="text-zinc-600 dark:text-zinc-400">
                       {formatCurrency(loan.totalOwed)}

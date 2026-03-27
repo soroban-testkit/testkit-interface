@@ -22,16 +22,13 @@ import { useMemo } from "react";
 import { useTranslations } from "next-intl";
 
 function ConnectWalletPrompt() {
-  const t = useTranslations("HomePage");
   return (
     <main className="flex min-h-[60vh] flex-col items-center justify-center gap-6 p-8">
       <div className="rounded-2xl bg-zinc-50 p-6 dark:bg-zinc-900">
         <WalletCards className="h-12 w-12 text-indigo-600 dark:text-indigo-400" />
       </div>
       <div className="text-center">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-          Welcome to RemitLend
-        </h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Welcome to RemitLend</h1>
         <p className="mt-2 max-w-md text-zinc-500 dark:text-zinc-400">
           Connect your wallet to view your portfolio, active loans, and recent activity.
         </p>
@@ -132,9 +129,7 @@ export default function Home() {
         <h1 id="dashboard-title" className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           {t("title", { address: shortAddress })}
         </h1>
-        <p className="text-zinc-500 dark:text-zinc-400">
-          {t("description")}
-        </p>
+        <p className="text-zinc-500 dark:text-zinc-400">{t("description")}</p>
       </header>
 
       {/* Stats Grid */}

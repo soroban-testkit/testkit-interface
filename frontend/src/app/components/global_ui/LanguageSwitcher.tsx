@@ -15,9 +15,9 @@ export function LanguageSwitcher() {
     const nextLocale = event.target.value;
     startTransition(() => {
       // replace the locale in the pathname
-      const segments = pathname.split('/');
+      const segments = pathname.split("/");
       segments[1] = nextLocale;
-      router.replace(segments.join('/'));
+      router.replace(segments.join("/"));
     });
   }
 

@@ -10,8 +10,6 @@ import {
   Settings,
   X,
   CreditCard,
-  BarChart3,
-  Crown,
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -32,7 +30,7 @@ export function Sidebar({ onClose, className }: SidebarProps) {
   const locale = useLocale();
 
   const navItems = [
-    { name: t("dashboardPrincipal" as any) || "Dashboard", href: `/${locale}`, icon: LayoutDashboard },
+    { name: t("dashboard"), href: `/${locale}`, icon: LayoutDashboard },
     { name: t("loans"), href: `/${locale}/loans`, icon: HandCoins },
     { name: "Lend", href: `/${locale}/lend`, icon: PiggyBank },
     { name: "Remittances", href: `/${locale}/remittances`, icon: SendHorizontal },

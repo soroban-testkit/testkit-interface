@@ -1,10 +1,8 @@
-import createNextIntlPlugin from 'next-intl/plugin';
+import createNextIntlPlugin from "next-intl/plugin";
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 
-const withNextIntl = createNextIntlPlugin(
-  './i18n.config.ts'
-);
+const withNextIntl = createNextIntlPlugin("./i18n.config.ts");
 
 const nextConfig: NextConfig = {
   reactCompiler: true,
@@ -24,5 +22,5 @@ export default withNextIntl(
     },
     // Automatically instrument Next.js data fetching methods
     autoInstrumentServerFunctions: true,
-  })
+  }),
 );

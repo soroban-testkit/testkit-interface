@@ -8,7 +8,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from "react";
 import { useRouter } from "next/navigation";
-import { Menu, Search, User, Wallet, SendHorizontal } from "lucide-react";
+import { Menu, Search, User, Wallet } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { ThemeToggle } from "../ui/ThemeToggle";
@@ -48,7 +48,7 @@ export function Header({ onMenuClick, className }: HeaderProps) {
 
   const pages = useMemo(
     () => [
-      { name: t("dashboardPrincipal" as any) || "Dashboard", href: `/${locale}` },
+      { name: t("dashboard"), href: `/${locale}` },
       { name: t("loans"), href: `/${locale}/loans` },
       { name: "Remittances", href: `/${locale}/remittances` },
       { name: "Lend", href: `/${locale}/lend` },
@@ -74,7 +74,8 @@ export function Header({ onMenuClick, className }: HeaderProps) {
     const loanResults = loans
       .filter(
         (loan) =>
-          loan.id.toString().toLowerCase().includes(term) || loan.borrowerId.toLowerCase().includes(term),
+          loan.id.toString().toLowerCase().includes(term) ||
+          loan.borrowerId.toLowerCase().includes(term),
       )
       .slice(0, 5)
       .map((loan) => ({
