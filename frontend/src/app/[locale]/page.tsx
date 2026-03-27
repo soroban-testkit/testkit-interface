@@ -9,17 +9,17 @@ import {
   ExternalLink,
   WalletCards,
 } from "lucide-react";
-import Link from "next/link";
 import {
   useWalletStore,
   selectIsWalletConnected,
   selectWalletAddress,
-} from "./stores/useWalletStore";
-import { useLoans, useRemittances, useUserBalance } from "./hooks/useApi";
-import { DashboardSkeleton } from "./components/skeletons/DashboardSkeleton";
-import { CreditScoreGauge } from "./components/ui/CreditScoreGauge";
-import { ErrorBoundary } from "./components/global_ui/ErrorBoundary";
+} from "../stores/useWalletStore";
+import { useLoans, useRemittances, useUserBalance } from "../hooks/useApi";
+import { DashboardSkeleton } from "../components/skeletons/DashboardSkeleton";
+import { CreditScoreGauge } from "../components/ui/CreditScoreGauge";
+import { ErrorBoundary } from "../components/global_ui/ErrorBoundary";
 import { useMemo } from "react";
+import { useTranslations } from "next-intl";
 
 function ConnectWalletPrompt() {
   return (
@@ -42,6 +42,7 @@ function formatCurrency(value: number): string {
 }
 
 export default function Home() {
+  const t = useTranslations("HomePage");
   const isConnected = useWalletStore(selectIsWalletConnected);
   const address = useWalletStore(selectWalletAddress);
 
@@ -126,11 +127,9 @@ export default function Home() {
       {/* Welcome Section */}
       <header>
         <h1 id="dashboard-title" className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-          Welcome, {shortAddress}
+          {t("title", { address: shortAddress })}
         </h1>
-        <p className="text-zinc-500 dark:text-zinc-400">
-          Here is what&apos;s happening with your portfolio today.
-        </p>
+        <p className="text-zinc-500 dark:text-zinc-400">{t("description")}</p>
       </header>
 
       {/* Stats Grid */}
@@ -141,28 +140,28 @@ export default function Home() {
         >
           {[
             {
-              label: "Net Worth",
+              label: t("stats.netWorth"),
               value: stats.netWorth,
               change: balance ? `${formatCurrency(balance.available)} available` : "",
               icon: Activity,
               trend: "up" as const,
             },
             {
-              label: "Active Loans",
+              label: t("stats.activeLoans"),
               value: stats.activeLoans,
               change: stats.activeLoansSub,
               icon: Users,
               trend: "neutral" as const,
             },
             {
-              label: "Total Remitted",
+              label: t("stats.totalRemitted"),
               value: stats.totalRemitted,
               change: `${remittances?.length ?? 0} transfers`,
               icon: ArrowUpRight,
               trend: "up" as const,
             },
             {
-              label: "Yield (APY)",
+              label: t("stats.yieldApy"),
               value: stats.yieldApy,
               change: "",
               icon: ArrowDownLeft,
@@ -208,13 +207,13 @@ export default function Home() {
                 className="text-lg font-bold text-zinc-900 dark:text-zinc-50 flex items-center gap-2"
               >
                 <Clock className="h-5 w-5 text-zinc-400" aria-hidden="true" />
-                Recent Activity
+                {t("activity.title")}
               </h2>
               <button
                 className="text-sm font-medium text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2 rounded px-2 py-1"
                 aria-label="View all recent activity"
               >
-                View All
+                {t("activity.viewAll")}
               </button>
             </div>
 
@@ -222,7 +221,7 @@ export default function Home() {
               <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
                 {recentActivity.length === 0 ? (
                   <div className="p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                    No recent activity yet. Your transactions will appear here.
+                    {t("activity.empty")}
                   </div>
                 ) : (
                   recentActivity.map((item, i) => (
@@ -272,26 +271,32 @@ export default function Home() {
               id="quick-actions-heading"
               className="text-lg font-bold text-zinc-900 dark:text-zinc-50"
             >
-              Quick Actions
+              {t("quickActions.title")}
             </h2>
             <div className="space-y-3">
-              <Link
-                href="/request-loan"
-                className="block w-full rounded-xl bg-indigo-600 p-4 text-left text-white shadow-lg shadow-indigo-500/10 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2"
-              >
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="font-bold">Apply for Loan</span>
-                  <ExternalLink className="h-4 w-4 opacity-50" aria-hidden="true" />
-                </div>
-                <p className="text-xs opacity-80">Get instant liquidity</p>
-              </Link>
-              <button className="w-full rounded-xl bg-zinc-900 p-4 text-left text-white shadow-lg shadow-indigo-500/10 transition-opacity hover:opacity-90 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2">
-                <div className="mb-1 flex items-center justify-between">
-                  <span className="font-bold">Send Remittance</span>
-                  <ExternalLink className="h-4 w-4 opacity-50" aria-hidden="true" />
-                </div>
-                <p className="text-xs opacity-80">Transfer funds globally</p>
-              </button>
+              {[
+                {
+                  title: t("quickActions.applyLoan"),
+                  desc: t("quickActions.applyLoanDesc"),
+                  color: "bg-indigo-600",
+                },
+                {
+                  title: t("quickActions.sendRemittance"),
+                  desc: t("quickActions.sendRemittanceDesc"),
+                  color: "bg-zinc-900",
+                },
+              ].map((action, i) => (
+                <button
+                  key={i}
+                  className={`w-full text-left p-4 rounded-xl ${action.color} text-white hover:opacity-90 transition-opacity shadow-lg shadow-indigo-500/10 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-2`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-bold">{action.title}</span>
+                    <ExternalLink className="h-4 w-4 opacity-50" aria-hidden="true" />
+                  </div>
+                  <p className="text-xs opacity-80">{action.desc}</p>
+                </button>
+              ))}
             </div>
 
             {/* Credit Score Gauge */}
@@ -307,17 +312,16 @@ export default function Home() {
               aria-labelledby="outreach-heading"
             >
               <h3 id="outreach-heading" className="font-bold text-indigo-900 dark:text-indigo-300">
-                Community Outreach
+                {t("outreach.title")}
               </h3>
               <p className="text-sm text-indigo-700 dark:text-indigo-400 leading-relaxed">
-                New borrowers in Ghana are looking for micro-loans for agricultural tools. Help grow
-                the ecosystem!
+                {t("outreach.description")}
               </p>
               <button
                 className="text-sm font-bold text-indigo-600 dark:text-indigo-400 flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-focus-ring focus-visible:ring-offset-1 rounded"
                 aria-label="Explore micro-loan opportunities"
               >
-                Explore Opportunities
+                {t("outreach.explore")}
                 <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
               </button>
             </section>

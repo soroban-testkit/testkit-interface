@@ -356,7 +356,7 @@ export default function RemittancesPage() {
         <section aria-label="Remittance history">
           {isLoading ? (
             <div className="flex justify-center py-20">
-              <Spinner size="lg" />
+              <Spinner type="spin" size={32} />
             </div>
           ) : isError ? (
             <div className="rounded-xl border border-red-200 bg-red-50 p-8 text-center dark:border-red-900/50 dark:bg-red-950/20">
