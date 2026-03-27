@@ -14,17 +14,17 @@ import {
   selectIsWalletConnected,
   selectWalletAddress,
   type WalletStore,
-} from "./stores/useWalletStore";
+} from "../../stores/useWalletStore";
 import {
   useLoans,
   useRemittances,
   useUserBalance,
   useUserProfile,
   useCreditScoreHistory,
-} from "./hooks/useApi";
-import { DashboardSkeleton } from "./components/skeletons/DashboardSkeleton";
-import { CreditScoreGauge } from "./components/ui/CreditScoreGauge";
-import { ErrorBoundary } from "./components/global_ui/ErrorBoundary";
+} from "../../hooks/useApi";
+import { DashboardSkeleton } from "../../components/skeletons/DashboardSkeleton";
+import { CreditScoreGauge } from "../../components/ui/CreditScoreGauge";
+import { ErrorBoundary } from "../../components/global_ui/ErrorBoundary";
 import React, { useMemo } from "react";
 
 function formatCurrency(value: number): string {
