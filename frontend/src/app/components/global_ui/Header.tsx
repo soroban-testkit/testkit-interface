@@ -333,6 +333,7 @@ export function Header({ onMenuClick, className }: HeaderProps) {
 
         <button
           onClick={handleWalletToggle}
+          aria-label="Connect Wallet"
           className="hidden sm:flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-500/20"
         >
           <Wallet className="h-4 w-4" />
@@ -341,6 +342,7 @@ export function Header({ onMenuClick, className }: HeaderProps) {
 
         <button
           onClick={handleWalletToggle}
+          aria-label="Connect Wallet"
           className="sm:hidden p-2 text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900"
         >
           <Wallet className="h-5 w-5 text-indigo-600" />

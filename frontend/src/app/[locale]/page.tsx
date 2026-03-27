@@ -13,29 +13,20 @@ import {
   useWalletStore,
   selectIsWalletConnected,
   selectWalletAddress,
-} from "../stores/useWalletStore";
-import { useLoans, useRemittances, useUserBalance } from "../hooks/useApi";
-import { DashboardSkeleton } from "../components/skeletons/DashboardSkeleton";
-import { CreditScoreGauge } from "../components/ui/CreditScoreGauge";
-import { ErrorBoundary } from "../components/global_ui/ErrorBoundary";
-import { useMemo } from "react";
-import { useTranslations } from "next-intl";
 
-function ConnectWalletPrompt() {
-  return (
-    <main className="flex min-h-[60vh] flex-col items-center justify-center gap-6 p-8">
-      <div className="rounded-2xl bg-zinc-50 p-6 dark:bg-zinc-900">
-        <WalletCards className="h-12 w-12 text-indigo-600 dark:text-indigo-400" />
-      </div>
-      <div className="text-center">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Welcome to RemitLend</h1>
-        <p className="mt-2 max-w-md text-zinc-500 dark:text-zinc-400">
-          Connect your wallet to view your portfolio, active loans, and recent activity.
-        </p>
-      </div>
-    </main>
-  );
-}
+  type WalletStore,
+} from "./stores/useWalletStore";
+import {
+  useLoans,
+  useRemittances,
+  useUserBalance,
+  useUserProfile,
+  useCreditScoreHistory,
+} from "./hooks/useApi";
+import { DashboardSkeleton } from "./components/skeletons/DashboardSkeleton";
+import { CreditScoreGauge } from "./components/ui/CreditScoreGauge";
+import { ErrorBoundary } from "./components/global_ui/ErrorBoundary";
+import React, { useMemo } from "react";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(value);
@@ -45,16 +36,43 @@ export default function Home() {
   const t = useTranslations("HomePage");
   const isConnected = useWalletStore(selectIsWalletConnected);
   const address = useWalletStore(selectWalletAddress);
+  const setConnected = useWalletStore((state: WalletStore) => state.setConnected);
 
   const { data: loans, isLoading: loansLoading } = useLoans({ enabled: isConnected });
   const { data: remittances, isLoading: remittancesLoading } = useRemittances({
     enabled: isConnected,
   });
-  const { data: balance, isLoading: balanceLoading } = useUserBalance({ enabled: isConnected });
+  const { data: balance, isLoading: balanceLoading } = useUserBalance({
+    enabled: isConnected,
+  });
+  const { data: userProfile } = useUserProfile({ enabled: isConnected });
+  const { data: creditHistory } = useCreditScoreHistory(userProfile?.id, {
+    enabled: isConnected && !!userProfile?.id,
+  });
 
-  const isLoading = loansLoading || remittancesLoading || balanceLoading;
+  const isLoading = (loansLoading || remittancesLoading || balanceLoading) && isConnected;
+
+  const currentCreditScore = useMemo(() => {
+    if (!creditHistory || creditHistory.length === 0) return null;
+    return creditHistory[creditHistory.length - 1].score;
+  }, [creditHistory]);
+
+  const previousCreditScore = useMemo(() => {
+    if (!creditHistory || creditHistory.length < 2) return null;
+    return creditHistory[creditHistory.length - 2].score;
+  }, [creditHistory]);
 
   const stats = useMemo(() => {
+    if (!isConnected) {
+      return {
+        netWorth: formatCurrency(0),
+        activeLoans: "0",
+        activeLoansSub: "0 pending",
+        totalRemitted: formatCurrency(0),
+        yieldApy: "0.0%",
+      };
+    }
+
     const activeLoans = loans?.filter((l) => l.status === "active") ?? [];
     const activeCount = activeLoans.length;
     const pendingCount = loans?.filter((l) => l.status === "pending").length ?? 0;
@@ -65,7 +83,6 @@ export default function Home() {
 
     const netWorth = (balance?.available ?? 0) + (balance?.locked ?? 0);
 
-    // Calculate simple APY from active loans
     const avgRate =
       activeLoans.length > 0
         ? activeLoans.reduce((sum, l) => sum + l.interestRate, 0) / activeLoans.length
@@ -78,7 +95,7 @@ export default function Home() {
       totalRemitted: formatCurrency(totalRemitted),
       yieldApy: `${avgRate.toFixed(1)}%`,
     };
-  }, [loans, remittances, balance]);
+  }, [loans, remittances, balance, isConnected]);
 
   const recentActivity = useMemo(() => {
     const loanEvents =
@@ -110,7 +127,43 @@ export default function Home() {
   }, [loans, remittances]);
 
   if (!isConnected) {
-    return <ConnectWalletPrompt />;
+    return (
+      <main className="space-y-8 min-h-screen p-8 lg:p-12 max-w-7xl mx-auto animate-in fade-in duration-500">
+        <header>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">Dashboard</h1>
+          <p className="text-zinc-500 dark:text-zinc-400">
+            Welcome to RemitLend. Please connect your wallet to view your portfolio.
+          </p>
+        </header>
+
+        <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 opacity-50 grayscale-[0.5]">
+          {["Net Worth", "Active Loans", "Total Remitted", "Yield (APY)"].map((label, i) => (
+            <div key={i} className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950">
+              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{label}</p>
+              <h3 className="text-2xl font-bold text-zinc-300 dark:text-zinc-700">$0.00</h3>
+            </div>
+          ))}
+        </section>
+
+        <div className="rounded-2xl bg-zinc-50 p-12 text-center dark:bg-zinc-900/50 border border-dashed border-zinc-200 dark:border-zinc-800">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-500/10 mb-6">
+            <WalletCards className="h-8 w-8 text-indigo-600 dark:text-indigo-400" />
+          </div>
+          <h2 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">Wallet Not Connected</h2>
+          <p className="mt-2 text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto">
+            Connect your wallet to analyze your on-chain credit score, manage active positions, and track cross-border remittances.
+          </p>
+          <button
+            onClick={() => {
+              setConnected("0x123...abc", { chainId: 1, name: "Stellar", isSupported: true });
+            }}
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3 text-sm font-semibold text-white hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-500/20"
+          >
+            Connect Wallet
+          </button>
+        </div>
+      </main>
+    );
   }
 
   if (isLoading) {
@@ -124,7 +177,6 @@ export default function Home() {
       className="space-y-8 min-h-screen p-8 lg:p-12 max-w-7xl mx-auto"
       aria-labelledby="dashboard-title"
     >
-      {/* Welcome Section */}
       <header>
         <h1 id="dashboard-title" className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           {t("title", { address: shortAddress })}
@@ -132,7 +184,6 @@ export default function Home() {
         <p className="text-zinc-500 dark:text-zinc-400">{t("description")}</p>
       </header>
 
-      {/* Stats Grid */}
       <ErrorBoundary scope="dashboard summary" variant="section">
         <section
           aria-label="Portfolio Statistics"
@@ -167,34 +218,36 @@ export default function Home() {
               icon: ArrowDownLeft,
               trend: "up" as const,
             },
-          ].map((stat, i) => (
-            <article
-              key={i}
-              className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950"
-            >
-              <div className="flex items-center justify-between">
-                <div className="rounded-lg bg-zinc-50 p-2 dark:bg-zinc-900" aria-hidden="true">
-                  <stat.icon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+          ].map((stat, i) => {
+            const Icon = stat.icon;
+            return (
+              <article
+                key={i}
+                className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="rounded-lg bg-zinc-50 p-2 dark:bg-zinc-900" aria-hidden="true">
+                    <Icon className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                  </div>
+                  {stat.change && (
+                    <span
+                      className={`text-xs font-medium px-2 py-0.5 rounded-full ${stat.trend === "up"
+                          ? "bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400"
+                          : "bg-zinc-50 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400"
+                        }`}
+                      aria-label={`Change: ${stat.change}`}
+                    >
+                      {stat.change}
+                    </span>
+                  )}
                 </div>
-                {stat.change && (
-                  <span
-                    className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      stat.trend === "up"
-                        ? "bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400"
-                        : "bg-zinc-50 text-zinc-600 dark:bg-zinc-900 dark:text-zinc-400"
-                    }`}
-                    aria-label={`Change: ${stat.change}`}
-                  >
-                    {stat.change}
-                  </span>
-                )}
-              </div>
-              <div className="mt-4">
-                <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{stat.label}</p>
-                <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{stat.value}</h3>
-              </div>
-            </article>
-          ))}
+                <div className="mt-4">
+                  <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">{stat.label}</p>
+                  <h3 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{stat.value}</h3>
+                </div>
+              </article>
+            );
+          })}
         </section>
       </ErrorBoundary>
 
@@ -231,11 +284,10 @@ export default function Home() {
                     >
                       <div className="flex items-center gap-4">
                         <div
-                          className={`h-10 w-10 rounded-full flex items-center justify-center ${
-                            item.status === "completed" || item.status === "repaid"
+                          className={`h-10 w-10 rounded-full flex items-center justify-center ${item.status === "completed" || item.status === "repaid"
                               ? "bg-green-50 dark:bg-green-500/10"
                               : "bg-indigo-50 dark:bg-indigo-500/10"
-                          }`}
+                            }`}
                           aria-hidden="true"
                         >
                           {item.amount.startsWith("+") ? (
@@ -304,7 +356,15 @@ export default function Home() {
               className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950"
               aria-label="Credit Score"
             >
-              <CreditScoreGauge score={720} previousScore={705} />
+              <CreditScoreGauge
+                score={currentCreditScore ?? 300}
+                previousScore={previousCreditScore ?? undefined}
+              />
+              {!currentCreditScore && (
+                <p className="mt-2 text-center text-[10px] text-zinc-400">
+                  Join the ecosystem to build your on-chain credit history.
+                </p>
+              )}
             </section>
 
             <section
