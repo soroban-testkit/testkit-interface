@@ -106,9 +106,8 @@ The repository is organized as a monorepo containing three core packages:
 4. **Apply database migrations** (creates `scores`, `loan_events`, `indexer_state`, and other tables):
    ```bash
    npm run migrate:up
-   # Alias (same command style as issue tickets)
-   npm run migrate up
    ```
+   Migration scripts use the colon form (`migrate:up` / `migrate:down`), which is the standard npm convention.
 
 5. **Run development server:**
    ```bash
