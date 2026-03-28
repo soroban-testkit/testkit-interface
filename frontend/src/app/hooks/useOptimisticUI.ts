@@ -3,18 +3,21 @@
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
 
-export interface OptimisticTransaction {
+export type TransactionStatus = "idle" | "pending" | "success" | "error";
+
+export interface TransactionState {
   id: string;
-  status: "idle" | "pending" | "success" | "error";
+  status: TransactionStatus;
   message: string;
   progress?: number;
-  txHash?: string;
   error?: string;
+  txHash?: string;
   startTime: number;
 }
 
 interface OptimisticUIState {
-  transactions: Record<string, OptimisticTransaction>;
+  transactions: Record<string, TransactionState>;
+  optimisticUpdates: Set<string>;
 }
 
 interface OptimisticUIActions {
@@ -23,7 +26,11 @@ interface OptimisticUIActions {
   completeTransaction: (id: string, txHash?: string, message?: string) => void;
   failTransaction: (id: string, error: string) => void;
   clearTransaction: (id: string) => void;
-  getTransaction: (id: string) => OptimisticTransaction | undefined;
+  clearAllTransactions: () => void;
+  addOptimisticUpdate: (key: string) => void;
+  removeOptimisticUpdate: (key: string) => void;
+  isOptimisticUpdate: (key: string) => boolean;
+  getTransaction: (id: string) => TransactionState | undefined;
 }
 
 export type OptimisticUIStore = OptimisticUIState & OptimisticUIActions;
@@ -32,6 +39,7 @@ export const useOptimisticUI = create<OptimisticUIStore>()(
   devtools(
     (set, get) => ({
       transactions: {},
+      optimisticUpdates: new Set(),
 
       startTransaction: (id, message) =>
         set((state) => ({
@@ -56,7 +64,7 @@ export const useOptimisticUI = create<OptimisticUIStore>()(
               ...state.transactions,
               [id]: {
                 ...tx,
-                progress,
+                progress: Math.min(100, Math.max(0, progress)),
                 ...(message ? { message } : {}),
               },
             },
@@ -103,8 +111,43 @@ export const useOptimisticUI = create<OptimisticUIStore>()(
           return { transactions: rest };
         }),
 
+      clearAllTransactions: () => set({ transactions: {} }),
+
+      addOptimisticUpdate: (key) =>
+        set((state) => {
+          const updated = new Set(state.optimisticUpdates);
+          updated.add(key);
+          return { optimisticUpdates: updated };
+        }),
+
+      removeOptimisticUpdate: (key) =>
+        set((state) => {
+          const updated = new Set(state.optimisticUpdates);
+          updated.delete(key);
+          return { optimisticUpdates: updated };
+        }),
+
+      isOptimisticUpdate: (key) => get().optimisticUpdates.has(key),
+
       getTransaction: (id) => get().transactions[id],
     }),
     { name: "OptimisticUIStore" },
   ),
 );
+
+export function useTransaction(id: string) {
+  const store = useOptimisticUI();
+  const transaction = store.getTransaction(id);
+
+  return {
+    transaction,
+    start: (message: string) => store.startTransaction(id, message),
+    updateProgress: (progress: number) => store.updateProgress(id, progress),
+    complete: (txHash?: string) => store.completeTransaction(id, txHash),
+    fail: (error: string) => store.failTransaction(id, error),
+    clear: () => store.clearTransaction(id),
+    isLoading: transaction?.status === "pending",
+    isSuccess: transaction?.status === "success",
+    isError: transaction?.status === "error",
+  };
+}
