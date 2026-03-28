@@ -69,8 +69,7 @@ export function TransactionStatusTracker({
         isSuccess &&
           "border-emerald-200 bg-emerald-50 dark:border-emerald-900/40 dark:bg-emerald-950/20",
         isError && "border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20",
-        isCancelled &&
-          "border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20",
+        isCancelled && "border-amber-200 bg-amber-50 dark:border-amber-900/40 dark:bg-amber-950/20",
       ]
         .filter(Boolean)
         .join(" ")}

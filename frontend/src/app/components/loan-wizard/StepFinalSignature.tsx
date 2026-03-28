@@ -350,7 +350,9 @@ export function StepFinalSignature({
             guidance={trackerGuidance}
             txHash={trackerTxHash}
             onCancel={
-              trackerState === "signing" || trackerState === "submitting" || trackerState === "polling"
+              trackerState === "signing" ||
+              trackerState === "submitting" ||
+              trackerState === "polling"
                 ? cancelTracking
                 : undefined
             }
