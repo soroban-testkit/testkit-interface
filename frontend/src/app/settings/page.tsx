@@ -150,6 +150,7 @@ function ProfileSection() {
           placeholder="e.g. Alice"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
+          required
         />
         <Input
           label="Email (optional)"
@@ -159,6 +160,10 @@ function ProfileSection() {
           onChange={(e) => setEmail(e.target.value)}
           helperText="Used for email notifications only. Never shared publicly."
         />
+
+        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-2">
+          <span className="text-red-600">*</span> Required field
+        </p>
 
         <Button variant="primary" onClick={handleSave} className="w-full sm:w-auto">
           {saved ? "Saved!" : "Save Profile"}
