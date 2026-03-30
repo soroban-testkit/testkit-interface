@@ -10,6 +10,7 @@ import { formatRemittanceSend } from "../../utils/transactionFormatter";
 import { isValidStellarAddress } from "../../utils/stellar";
 import { AlertCircle, Send, Loader } from "lucide-react";
 import { useCreateRemittance } from "../../hooks/useApi";
+import { truncateDecimals, getAssetPrecision } from "../../utils/precision";
 import { toast } from "sonner";
 
 interface RemittanceFormProps {
@@ -61,7 +62,9 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
   };
 
   const handleAmountChange = (value: string) => {
-    setAmount(value);
+    const precision = getAssetPrecision(token);
+    const truncatedValue = truncateDecimals(value, precision);
+    setAmount(truncatedValue);
     if (errors.amount) {
       setErrors({ ...errors, amount: "" });
     }

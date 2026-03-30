@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { Clock, ArrowUpRight, ArrowDownLeft, ExternalLink, X } from "lucide-react";
 import { useWalletStore, selectIsWalletConnected } from "../../stores/useWalletStore";
 import { useLoans, useRemittances } from "../../hooks/useApi";
+import { EmptyState } from "../../components/ui/EmptyState";
 import { ErrorBoundary } from "../../components/global_ui/ErrorBoundary";
 
 type FilterType = "all" | "loan" | "remittance";
@@ -141,10 +142,11 @@ export default function ActivityPage() {
               ))}
             </div>
           ) : paginatedActivity.length === 0 ? (
-            <div className="p-12 text-center">
-              <Clock className="h-12 w-12 mx-auto text-zinc-300 dark:text-zinc-700 mb-4" />
-              <p className="text-zinc-500 dark:text-zinc-400">{t("emptyState")}</p>
-            </div>
+            <EmptyState
+              icon={Clock}
+              title={t("emptyState.title") || "No activity yet"}
+              description={t("emptyState.description") || "Your transaction history will appear here once you start using RemitLend."}
+            />
           ) : (
             <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
               {paginatedActivity.map((item) => (

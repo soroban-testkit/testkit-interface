@@ -12,3 +12,5 @@ coverage
 *.log
 .idea
 create_issues.sh
+issue.md
+pr.md

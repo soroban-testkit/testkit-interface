@@ -26,6 +26,7 @@ import {
 } from "../hooks/useApi";
 import { DashboardSkeleton } from "../components/skeletons/DashboardSkeleton";
 import { CreditScoreGauge } from "../components/ui/CreditScoreGauge";
+import { EmptyState } from "../components/ui/EmptyState";
 import { ErrorBoundary } from "../components/global_ui/ErrorBoundary";
 import React, { useMemo } from "react";
 
@@ -287,9 +288,11 @@ export default function Home() {
             <div className="rounded-xl border border-zinc-200 bg-white overflow-hidden dark:border-zinc-800 dark:bg-zinc-950">
               <div className="divide-y divide-zinc-200 dark:divide-zinc-800">
                 {recentActivity.length === 0 ? (
-                  <div className="p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">
-                    {t("activity.empty")}
-                  </div>
+                  <EmptyState
+                    icon={Clock}
+                    title={t("activity.emptyTitle") || "No activity"}
+                    description={t("activity.empty") || "Your recent activity will appear here."}
+                  />
                 ) : (
                   recentActivity.map((item, i) => (
                     <div

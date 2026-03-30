@@ -8,7 +8,9 @@ import { LoansListSkeleton } from "../../components/skeletons/LoansListSkeleton"
 import { useBorrowerLoans } from "../../hooks/useApi";
 import { LoanStatusBadge } from "../../components/ui/LoanStatusBadge";
 import { useWalletStore, selectWalletAddress } from "../../stores/useWalletStore";
+import { useRouter } from "next/navigation";
 import { useTranslations, useLocale } from "next-intl";
+import { EmptyState } from "../../components/ui/EmptyState";
 
 const PAGE_SIZE = 6;
 
@@ -26,6 +28,7 @@ function getLoanDisplayStatus(status: string, nextPaymentDeadline: string, now: 
 export default function LoansPage() {
   const t = useTranslations("Loans");
   const locale = useLocale();
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"all" | "active" | "repaid" | "defaulted">("all");
   const [page, setPage] = useState(1);
   const [now] = useState(() => Date.now());
@@ -151,21 +154,13 @@ export default function LoansPage() {
           </div>
 
           {paginatedLoans.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-zinc-300 px-6 py-10 text-center dark:border-zinc-700">
-              <p className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
-                {t("empty.title")}
-              </p>
-              <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-                {t("empty.description")}
-              </p>
-              <Link
-                href={`/${locale}`}
-                className="mt-4 inline-flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-500"
-              >
-                {t("empty.action")}
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
+            <EmptyState
+              icon={CircleDollarSign}
+              title={t("empty.title")}
+              description={t("empty.description")}
+              actionLabel={t("empty.action")}
+              onAction={() => router.push(`/${locale}`)}
+            />
           ) : (
             <div className="space-y-3">
               {paginatedLoans.map((loan) => (

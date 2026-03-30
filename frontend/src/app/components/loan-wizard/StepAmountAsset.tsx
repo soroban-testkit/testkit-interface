@@ -5,6 +5,7 @@ import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/Card";
 import type { LoanWizardData } from "./LoanApplicationWizard";
+import { truncateDecimals, getAssetPrecision } from "../../utils/precision";
 
 const TERM_OPTIONS = [
   { label: "30 days", days: 30 as const },
@@ -118,7 +119,9 @@ export function StepAmountAsset({ data, onChange, onNext, error, onError }: Step
               max={data.maxAmount || undefined}
               value={data.amount}
               onChange={(e) => {
-                onChange({ amount: e.target.value });
+                const precision = getAssetPrecision(data.asset);
+                const truncated = truncateDecimals(e.target.value, precision);
+                onChange({ amount: truncated });
                 onError(null);
               }}
               placeholder="1000"

@@ -12,6 +12,7 @@ import { useGamificationStore } from "../../stores/useGamificationStore";
 import { useRepaymentOperation } from "../../hooks/useRepaymentOperation";
 import { OperationProgress } from "../ui/OperationProgress";
 import { useWalletStore, selectWalletAddress } from "../../stores/useWalletStore";
+import { truncateDecimals } from "../../utils/precision";
 
 interface LoanRepaymentFormProps {
   loanId: number;
@@ -42,7 +43,16 @@ export function LoanRepaymentForm({ loanId, totalOwed, minPayment = 0 }: LoanRep
   });
 
   const handleAmountChange = (value: string) => {
-    setAmount(value);
+    // USDC uses 2 decimals
+    const truncatedValue = truncateDecimals(value, 2);
+    setAmount(truncatedValue);
+    setError(null);
+  };
+
+  const handlePayFullAmount = () => {
+    const fullAmount = totalOwed.toString();
+    const truncatedValue = truncateDecimals(fullAmount, 2);
+    setAmount(truncatedValue);
     setError(null);
   };
 
@@ -91,10 +101,6 @@ export function LoanRepaymentForm({ loanId, totalOwed, minPayment = 0 }: LoanRep
     });
   };
 
-  const handlePayFullAmount = () => {
-    setAmount(totalOwed.toString());
-    setError(null);
-  };
 
   return (
     <>

@@ -81,6 +81,13 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
   const response = await fetch(`${API_URL}${path}`, { ...options, headers });
 
   if (!response.ok) {
+    // Session expiry: fire a global event so SessionExpiryHandler can intercept
+    if (response.status === 401) {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("auth:session-expired"));
+      }
+      throw new Error("Session expired. Please sign in again.");
+    }
     const error = await response.json().catch(() => ({ message: response.statusText }));
     throw new Error(error.message ?? `Request failed with status ${response.status}`);
   }

@@ -6,10 +6,7 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { motion, AnimatePresence } from "framer-motion";
 
-/** Tool to merge Tailwind classes safely */
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from "@/app/utils/cn";
 
 interface ModalProps {
   isOpen: boolean;
