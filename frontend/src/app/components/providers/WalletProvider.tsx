@@ -11,6 +11,7 @@ interface WalletProviderContextValue {
   disconnectWallet: () => void;
   refreshWallet: () => Promise<void>;
   isFreighterAvailable: boolean;
+  signTransaction: (unsignedTxXdr: string) => Promise<string>;
 }
 
 interface WalletProviderProps {
@@ -219,6 +220,37 @@ export function WalletProvider({ children }: WalletProviderProps) {
     disconnect();
   }
 
+  const NETWORK_PASSPHRASES: Record<string, string> = {
+    PUBLIC: "Public Global Stellar Network ; October 2015",
+    TESTNET: "Test SDF Network ; September 2015",
+    FUTURENET: "Test SDF Future Network ; October 2022",
+    STANDALONE: "Standalone Network ; Separate from SDF",
+  };
+
+  async function signTransaction(unsignedTxXdr: string): Promise<string> {
+    const api = await loadFreighterApi();
+    const networkName = useWalletStore.getState().network?.name ?? "TESTNET";
+    const networkPassphrase = NETWORK_PASSPHRASES[networkName] ?? NETWORK_PASSPHRASES.TESTNET;
+
+    const result = await api.signTransaction(unsignedTxXdr, {
+      networkPassphrase,
+    });
+
+    if (typeof result === "string") {
+      return result;
+    }
+
+    if (result.error) {
+      throw new Error(normalizeWalletError(result.error));
+    }
+
+    if (result.signedTxXdr) {
+      return result.signedTxXdr;
+    }
+
+    throw new Error("Signing failed: No signed transaction returned.");
+  }
+
   async function refreshWallet() {
     await syncWallet(false);
   }
@@ -288,6 +320,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
         disconnectWallet,
         refreshWallet,
         isFreighterAvailable,
+        signTransaction,
       }}
     >
       {children}
