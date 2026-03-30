@@ -20,7 +20,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
   return (
     <div className="flex min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 z-50 bg-white p-2 rounded">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 z-50 bg-white p-2 rounded"
+      >
         Skip to main content
       </a>
       {/* Mobile Sidebar Backdrop */}
