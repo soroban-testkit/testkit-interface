@@ -1,19 +1,20 @@
 "use client";
 
-import { lazy, Suspense, useState } from "react";
+import dynamic from "next/dynamic";
+import { Suspense, useState } from "react";
 import type { CreditScoreDataPoint } from "../charts/CreditScoreTrendChart";
 import type { YieldDataPoint } from "../charts/YieldEarningsChart";
 
-const CreditScoreTrendChart = lazy(() =>
-  import("../charts/CreditScoreTrendChart").then((m) => ({
-    default: m.CreditScoreTrendChart,
-  })),
+const CreditScoreTrendChart = dynamic(
+  () =>
+    import("../charts/CreditScoreTrendChart").then((m) => m.CreditScoreTrendChart),
+  { ssr: false, loading: () => <SkeletonChart /> }
 );
 
-const YieldEarningsChart = lazy(() =>
-  import("../charts/YieldEarningsChart").then((m) => ({
-    default: m.YieldEarningsChart,
-  })),
+const YieldEarningsChart = dynamic(
+  () =>
+    import("../charts/YieldEarningsChart").then((m) => m.YieldEarningsChart),
+  { ssr: false, loading: () => <SkeletonChart /> }
 );
 import { useCreditScoreHistory, useYieldHistory } from "@/app/hooks/useApi";
 import { Card } from "../ui/Card";
@@ -175,6 +176,13 @@ export function FinancialPerformanceDashboard({
           <div className="lg:col-span-2">
             {isLoadingScore && !useMockData ? (
               <AnalyticsSkeleton />
+            ) : scoreError && !useMockData ? (
+              <Card className="p-8">
+                <div className="text-center">
+                  <p className="text-red-600 mb-4">Error loading credit score data</p>
+                  <Button onClick={() => refetchScore()}>Retry</Button>
+                </div>
+              </Card>
             ) : (
               <Suspense fallback={<SkeletonChart />}>
                 <CreditScoreTrendChart data={displayCreditScoreData} />

@@ -1,6 +1,7 @@
 "use client";
 
-import { lazy, Suspense, useMemo, useState } from "react";
+import dynamic from "next/dynamic";
+import { Suspense, useMemo, useState } from "react";
 import Link from "next/link";
 import { useLocale } from "next-intl";
 import {
@@ -30,10 +31,10 @@ import { useDepositOperation, useWithdrawalOperation } from "../../hooks/useRepa
 import { selectWalletAddress, useWalletStore } from "../../stores/useWalletStore";
 import { useSSE } from "../../hooks/useSSE";
 
-const YieldEarningsChart = lazy(() =>
-  import("../../components/charts/YieldEarningsChart").then((m) => ({
-    default: m.YieldEarningsChart,
-  })),
+const YieldEarningsChart = dynamic(
+  () =>
+    import("../../components/charts/YieldEarningsChart").then((m) => m.YieldEarningsChart),
+  { ssr: false, loading: () => <SkeletonChart /> }
 );
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";

@@ -1,6 +1,7 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import dynamic from "next/dynamic";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { Button } from "../../components/ui/Button";
@@ -14,10 +15,10 @@ import {
   selectIsWalletConnected,
 } from "../../stores/useWalletStore";
 
-const LoanApplicationWizard = lazy(() =>
-  import("../../components/loan-wizard/LoanApplicationWizard").then((m) => ({
-    default: m.LoanApplicationWizard,
-  })),
+const LoanApplicationWizard = dynamic(
+  () =>
+    import("../../components/loan-wizard/LoanApplicationWizard").then((m) => m.LoanApplicationWizard),
+  { ssr: false, loading: () => <WizardSkeleton /> }
 );
 
 function getScoreBandMax(score: number): number {

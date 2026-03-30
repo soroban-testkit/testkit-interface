@@ -1,27 +1,28 @@
 "use client";
 
 import { Crown } from "lucide-react";
-import { lazy, Suspense } from "react";
+import dynamic from "next/dynamic";
+import { Suspense } from "react";
 import { useGamificationStore } from "../../stores/useGamificationStore";
 import { Card } from "../../components/ui/Card";
 import { SkeletonCard } from "../../components/ui/Skeleton";
 
-const KingdomProgressWidget = lazy(() =>
-  import("../../components/gamification/KingdomProgressWidget").then((m) => ({
-    default: m.KingdomProgressWidget,
-  })),
+const KingdomProgressWidget = dynamic(
+  () =>
+    import("../../components/gamification/KingdomProgressWidget").then((m) => m.KingdomProgressWidget),
+  { ssr: false, loading: () => <SkeletonCard /> }
 );
 
-const AchievementsPanel = lazy(() =>
-  import("../../components/gamification/AchievementsPanel").then((m) => ({
-    default: m.AchievementsPanel,
-  })),
+const AchievementsPanel = dynamic(
+  () =>
+    import("../../components/gamification/AchievementsPanel").then((m) => m.AchievementsPanel),
+  { ssr: false, loading: () => <SkeletonCard /> }
 );
 
-const GamificationSettings = lazy(() =>
-  import("../../components/gamification/GamificationSettings").then((m) => ({
-    default: m.GamificationSettings,
-  })),
+const GamificationSettings = dynamic(
+  () =>
+    import("../../components/gamification/GamificationSettings").then((m) => m.GamificationSettings),
+  { ssr: false, loading: () => <SkeletonCard /> }
 );
 
 export default function KingdomPage() {
