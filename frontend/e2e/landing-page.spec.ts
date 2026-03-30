@@ -21,6 +21,8 @@ test.describe("Landing Page", () => {
 
   test("should show localized help text for new visitors", async ({ page }) => {
     await page.goto("/en");
-    await expect(page.locator("text=Welcome to RemitLend. Please connect your wallet")).toBeVisible();
+    await expect(
+      page.locator("text=Welcome to RemitLend. Please connect your wallet"),
+    ).toBeVisible();
   });
 });

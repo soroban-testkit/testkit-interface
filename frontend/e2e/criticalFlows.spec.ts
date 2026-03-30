@@ -83,29 +83,29 @@ test("Borrow: Connect wallet → Request Loan → Wizard steps", async ({ page }
   });
 
   await page.goto("/en"); // Explicitly go to English locale
-  
+
   // Navigate to Loan Wizard (via Apply button in quick actions)
   // Text matches HomePage.quickActions.applyLoan in en.json
-  const applyBtn = page.getByRole('button', { name: /Apply for Loan/i });
+  const applyBtn = page.getByRole("button", { name: /Apply for Loan/i });
   await applyBtn.waitFor();
   await applyBtn.click();
-  
+
   // Step 1: Amount & Asset
   await expect(page.locator("text=Loan Amount")).toBeVisible();
   await page.selectOption('select[name="asset"]', "USDC");
   await page.fill('input[placeholder="0.00"]', "1000");
-  const continueToCollateral = page.getByRole('button', { name: /Continue to Collateral/i });
+  const continueToCollateral = page.getByRole("button", { name: /Continue to Collateral/i });
   await continueToCollateral.click();
 
   // Step 2: Collateral & NFT Link
   await expect(page.locator("text=Collateral & NFT Link")).toBeVisible();
   await page.click('input[type="checkbox"]'); // Accept terms
-  const continueToSignature = page.getByRole('button', { name: /Continue to Signature/i });
+  const continueToSignature = page.getByRole("button", { name: /Continue to Signature/i });
   await continueToSignature.click();
 
   // Step 3: Transaction Signature
   await expect(page.locator("text=Ready to Sign")).toBeVisible();
-  
+
   // Mock creation request
   await page.route("**/api/loans", async (route: any) => {
     await route.fulfill({
@@ -160,7 +160,7 @@ test("Lend: Deposit funds → View updated pool stats", async ({ page }: { page:
   // Perform deposit
   await page.fill('input[placeholder="0.00"]', "2500");
   // Exact button text from lend/page.tsx: "Deposit"
-  const depositBtn = page.getByRole('button', { name: /^Deposit$/ });
+  const depositBtn = page.getByRole("button", { name: /^Deposit$/ });
   await depositBtn.click();
 
   // Verify success toast or UI update
@@ -169,7 +169,11 @@ test("Lend: Deposit funds → View updated pool stats", async ({ page }: { page:
 
 // ─── Flow 3: Repayment ─────────────────────────────────────────────────────────
 
-test("Borrower: Repay loan → Confirm transaction → Check status update", async ({ page }: { page: Page }) => {
+test("Borrower: Repay loan → Confirm transaction → Check status update", async ({
+  page,
+}: {
+  page: Page;
+}) => {
   // Mock existing loans for borrower
   await page.route("**/api/loans/borrower/**", async (route: any) => {
     await route.fulfill({
@@ -194,15 +198,15 @@ test("Borrower: Repay loan → Confirm transaction → Check status update", asy
   });
 
   await page.goto("/en");
-  
+
   // Click repay on the specific loan (assuming dashboard has a 'Repay' button in the loans list or card)
-  const repayBtn = page.getByRole('button', { name: "Repay" }).first();
-  await repayBtn.click(); 
+  const repayBtn = page.getByRole("button", { name: "Repay" }).first();
+  await repayBtn.click();
 
   // Perform repayment
   await expect(page.locator("text=Repayment Amount")).toBeVisible();
   await page.fill('input[type="number"]', "500");
-  
+
   // Mock repayment finish
   await page.route("**/api/loans/123/repay", async (route: any) => {
     await route.fulfill({
@@ -242,7 +246,7 @@ test("Remittance: View history", async ({ page }: { page: Page }) => {
     });
   });
 
-  await page.goto("/en/remittances"); 
+  await page.goto("/en/remittances");
 
   await expect(page.locator("text=History")).toBeVisible();
   await expect(page.locator("text=$250.00")).toBeVisible(); // formatting might vary
@@ -256,23 +260,23 @@ test("Account: Settings update → logout → redirect to login", async ({ page 
   await page.goto("/en/settings");
 
   // Profile update check (resolve strict mode by using heading)
-  await expect(page.getByRole('heading', { name: "Settings" })).toBeVisible();
-  
+  await expect(page.getByRole("heading", { name: "Settings" })).toBeVisible();
+
   // Fill profile field
-  const displayNameInput = page.getByRole('textbox', { name: /Display Name/i });
-  await displayNameInput.fill("Alice New Name"); 
-  
+  const displayNameInput = page.getByRole("textbox", { name: /Display Name/i });
+  await displayNameInput.fill("Alice New Name");
+
   await page.click('button:has-text("Save Profile")');
   await expect(page.locator("text=Saved!")).toBeVisible();
 
   // Logout flow
-  const logoutBtn = page.getByRole('button', { name: /Disconnect Wallet/i });
+  const logoutBtn = page.getByRole("button", { name: /Disconnect Wallet/i });
   await logoutBtn.scrollIntoViewIfNeeded();
   await logoutBtn.click();
 
   // Redirection check (after logout, the app usually clears session and redirects to landed/base with localized path)
-  await expect(page).toHaveURL(/.*\/en$/); 
-  
+  await expect(page).toHaveURL(/.*\/en$/);
+
   // Verify localStorage cleared
   const walletPersist = await page.evaluate(() => window.localStorage.getItem("remitlend-wallet"));
   const parsed = JSON.parse(walletPersist || "{}");

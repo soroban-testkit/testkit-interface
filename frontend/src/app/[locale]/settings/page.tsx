@@ -18,7 +18,11 @@ import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
 import { GamificationSettings } from "../../components/gamification/GamificationSettings";
 import { ThemeToggle } from "../../components/ui/ThemeToggle";
-import { useWalletStore, selectWalletAddress, selectWalletNetwork } from "../../stores/useWalletStore";
+import {
+  useWalletStore,
+  selectWalletAddress,
+  selectWalletNetwork,
+} from "../../stores/useWalletStore";
 import { useUserStore, selectUser } from "../../stores/useUserStore";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
