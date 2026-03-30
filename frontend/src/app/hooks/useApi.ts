@@ -183,6 +183,23 @@ export interface LoanDetails {
   events: LoanEvent[];
 }
 
+export interface LoanAmortizationScheduleRow {
+  date: string;
+  principalPortion: number;
+  interestPortion: number;
+  totalDue: number;
+  runningBalance: number;
+}
+
+export interface LoanAmortization {
+  principal: number;
+  interestRateBps: number;
+  termLedgers: number;
+  totalInterest: number;
+  totalDue: number;
+  schedule: LoanAmortizationScheduleRow[];
+}
+
 export interface PoolStats {
   totalDeposits: number;
   totalOutstanding: number;
@@ -243,6 +260,36 @@ export function useLoan(
       ) {
         return response.data;
       }
+      return response;
+    },
+    enabled: !!id,
+    ...options,
+  });
+}
+
+/**
+ * Fetches amortization schedule for a loan when a loan id is available.
+ */
+export function useLoanAmortizationSchedule(
+  id: string | undefined,
+  options?: Omit<UseQueryOptions<LoanAmortization>, "queryKey" | "queryFn">,
+) {
+  return useQuery<LoanAmortization>({
+    queryKey: [...queryKeys.loans.detail(id ?? ""), "amortization"],
+    queryFn: async () => {
+      const response = await apiFetch<
+        LoanAmortization | { success: boolean; amortization: LoanAmortization }
+      >(`/loans/${id}/amortization-schedule`);
+
+      if (
+        typeof response === "object" &&
+        response !== null &&
+        "success" in response &&
+        "amortization" in response
+      ) {
+        return response.amortization;
+      }
+
       return response;
     },
     enabled: !!id,
