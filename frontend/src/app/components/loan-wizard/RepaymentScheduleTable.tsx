@@ -46,6 +46,7 @@ interface RepaymentScheduleTableProps {
   title?: string;
   description?: string;
   compact?: boolean;
+  showSummaryCards?: boolean;
 }
 
 export function RepaymentScheduleTable({
@@ -53,6 +54,7 @@ export function RepaymentScheduleTable({
   title = "Repayment Schedule",
   description = "Review how each payment is split across the life of the loan.",
   compact = false,
+  showSummaryCards = true,
 }: RepaymentScheduleTableProps) {
   const schedule = mapScheduleRows(amortization.schedule);
 
@@ -66,26 +68,28 @@ export function RepaymentScheduleTable({
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{description}</p>
       </CardHeader>
       <CardContent className={compact ? "space-y-4" : "space-y-6"}>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">Principal Total</p>
-            <p className="mt-0.5 font-semibold text-zinc-900 dark:text-zinc-50">
-              {formatMoney(amortization.principal)}
-            </p>
+        {showSummaryCards && (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Principal Total</p>
+              <p className="mt-0.5 font-semibold text-zinc-900 dark:text-zinc-50">
+                {formatMoney(amortization.principal)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Total Interest</p>
+              <p className="mt-0.5 font-semibold text-zinc-900 dark:text-zinc-50">
+                {formatMoney(amortization.totalInterest)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-900/50 dark:bg-indigo-950/30">
+              <p className="text-xs text-indigo-600 dark:text-indigo-400">Total Cost of Loan</p>
+              <p className="mt-0.5 font-semibold text-indigo-700 dark:text-indigo-300">
+                {formatMoney(amortization.totalDue)}
+              </p>
+            </div>
           </div>
-          <div className="rounded-lg border border-zinc-200 p-3 dark:border-zinc-800">
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">Total Interest</p>
-            <p className="mt-0.5 font-semibold text-zinc-900 dark:text-zinc-50">
-              {formatMoney(amortization.totalInterest)}
-            </p>
-          </div>
-          <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 dark:border-indigo-900/50 dark:bg-indigo-950/30">
-            <p className="text-xs text-indigo-600 dark:text-indigo-400">Total Cost of Loan</p>
-            <p className="mt-0.5 font-semibold text-indigo-700 dark:text-indigo-300">
-              {formatMoney(amortization.totalDue)}
-            </p>
-          </div>
-        </div>
+        )}
 
         <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
           <table className="w-full text-sm">

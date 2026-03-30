@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import type { LoanAmortization } from "../../hooks/useApi";
 import { WizardStepper } from "./WizardStepper";
 import { StepAmountAsset } from "./StepAmountAsset";
 import { StepRepaymentSchedule } from "./StepRepaymentSchedule";
@@ -37,7 +36,6 @@ interface LoanApplicationWizardProps {
   borrowerAddress: string;
   creditScore: number;
   maxAmount: number;
-  previewAmortization?: LoanAmortization;
   onSuccess: (loanId: string) => void;
 }
 
@@ -45,7 +43,6 @@ export function LoanApplicationWizard({
   borrowerAddress,
   creditScore,
   maxAmount,
-  previewAmortization,
   onSuccess,
 }: LoanApplicationWizardProps) {
   const [currentStep, setCurrentStep] = useState(1);
@@ -90,12 +87,7 @@ export function LoanApplicationWizard({
       )}
 
       {currentStep === 2 && (
-        <StepRepaymentSchedule
-          data={wizardData}
-          previewAmortization={previewAmortization}
-          onNext={goNext}
-          onBack={goBack}
-        />
+        <StepRepaymentSchedule data={wizardData} onNext={goNext} onBack={goBack} />
       )}
 
       {currentStep === 3 && (

@@ -200,6 +200,11 @@ export interface LoanAmortization {
   schedule: LoanAmortizationScheduleRow[];
 }
 
+interface LoanAmortizationPreviewParams {
+  amount: number;
+  termDays: 30 | 60 | 90;
+}
+
 export interface PoolStats {
   totalDeposits: number;
   totalOutstanding: number;
@@ -294,6 +299,36 @@ export function useLoanAmortizationSchedule(
       return response;
     },
     enabled: !!id,
+    ...options,
+  });
+}
+
+export function useLoanAmortizationPreview(
+  params: LoanAmortizationPreviewParams | undefined,
+  options?: Omit<UseQueryOptions<LoanAmortization>, "queryKey" | "queryFn">,
+) {
+  return useQuery<LoanAmortization>({
+    queryKey: ["loans", "amortization-preview", params?.amount ?? 0, params?.termDays ?? 0],
+    queryFn: async () => {
+      const response = await apiFetch<
+        LoanAmortization | { success: boolean; amortization: LoanAmortization }
+      >("/loans/amortization-preview", {
+        method: "POST",
+        body: JSON.stringify(params),
+      });
+
+      if (
+        typeof response === "object" &&
+        response !== null &&
+        "success" in response &&
+        "amortization" in response
+      ) {
+        return response.amortization;
+      }
+
+      return response;
+    },
+    enabled: Boolean(params),
     ...options,
   });
 }

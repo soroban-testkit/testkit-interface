@@ -3,14 +3,13 @@
 import { AlertCircle, CalendarDays, Loader2 } from "lucide-react";
 import { Button } from "../ui/Button";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/Card";
-import { useLoanAmortizationSchedule, type LoanAmortization } from "../../hooks/useApi";
+import { useLoanAmortizationPreview, useLoanAmortizationSchedule } from "../../hooks/useApi";
 import { RepaymentScheduleTable } from "./RepaymentScheduleTable";
 import type { LoanWizardData } from "./LoanApplicationWizard";
 
 interface StepRepaymentScheduleProps {
   data: LoanWizardData;
   loanId?: string;
-  previewAmortization?: LoanAmortization;
   onNext: () => void;
   onBack: () => void;
 }
@@ -18,16 +17,26 @@ interface StepRepaymentScheduleProps {
 export function StepRepaymentSchedule({
   data,
   loanId,
-  previewAmortization,
   onNext,
   onBack,
 }: StepRepaymentScheduleProps) {
   const amortizationQuery = useLoanAmortizationSchedule(loanId, {
     retry: false,
   });
-  const amortization = amortizationQuery.data ?? previewAmortization;
+  const amount = Number(data.amount);
+  const previewQuery = useLoanAmortizationPreview(
+    !loanId && Number.isFinite(amount) && amount > 0
+      ? { amount, termDays: data.termDays }
+      : undefined,
+    {
+      retry: false,
+    },
+  );
+  const amortization = loanId ? amortizationQuery.data : previewQuery.data;
   const hasRequestedSchedule = Boolean(loanId);
-  const hasPreviewSchedule = Boolean(previewAmortization);
+  const hasPreviewSchedule = !loanId && Number.isFinite(amount) && amount > 0;
+  const isLoading = loanId ? amortizationQuery.isLoading : previewQuery.isLoading;
+  const isError = loanId ? amortizationQuery.isError : previewQuery.isError;
 
   return (
     <div className="space-y-6">
@@ -43,7 +52,7 @@ export function StepRepaymentSchedule({
             </p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {amortizationQuery.isLoading && (
+            {isLoading && (
               <div className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 Loading amortization schedule...
@@ -53,14 +62,11 @@ export function StepRepaymentSchedule({
             {!hasRequestedSchedule && !hasPreviewSchedule && (
               <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                <p>
-                  Amortization schedule preview will appear here once the frontend is connected to
-                  a preview response for the selected loan terms.
-                </p>
+                <p>Enter a valid loan amount and term to load the amortization schedule.</p>
               </div>
             )}
 
-            {amortizationQuery.isError && (
+            {isError && (
               <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-300">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
                 <p>Unable to load the amortization schedule.</p>
@@ -88,6 +94,7 @@ export function StepRepaymentSchedule({
                 ? "Review how each payment is broken down before moving to collateral."
                 : "Review your payment obligations before confirming."
             }
+            showSummaryCards={false}
           />
 
           <div className="flex gap-3">
