@@ -5,7 +5,7 @@ import Link from "next/link";
 import { ArrowRight, CalendarRange, CircleDollarSign, ShieldCheck } from "lucide-react";
 import { ErrorBoundary } from "../../components/global_ui/ErrorBoundary";
 import { LoansListSkeleton } from "../../components/skeletons/LoansListSkeleton";
-import { useBorrowerLoans, useBorrowerLoansPage } from "../../hooks/useApi";
+import { useBorrowerLoansPage } from "../../hooks/useApi";
 import { LoanStatusBadge } from "../../components/ui/LoanStatusBadge";
 import { PaginationControls } from "../../components/ui/PaginationControls";
 import { useWalletStore, selectWalletAddress } from "../../stores/useWalletStore";
@@ -21,6 +21,7 @@ function getLoanDisplayStatus(status: string, nextPaymentDeadline: string, now: 
   if (status !== "active") {
     return status;
   }
+
   return new Date(nextPaymentDeadline).getTime() < now ? "defaulted" : "active";
 }
 
@@ -32,7 +33,7 @@ export default function LoansPage() {
   const [pageCursors, setPageCursors] = useState<Record<number, string | null>>({ 1: null });
   const [now] = useState(() => Date.now());
   const address = useWalletStore(selectWalletAddress);
-  const { loans: allLoans, stats } = useBorrowerLoans(address ?? undefined);
+
   const {
     data: loansPage,
     isLoading,
@@ -50,20 +51,27 @@ export default function LoansPage() {
     }));
   }, [loansPage?.items, now]);
 
-  const knownPages = Object.keys(pageCursors).length;
-  const totalPages = Math.max(page, loansPage?.pageInfo.hasNext ? knownPages + 1 : knownPages);
+  const totalPages = Math.max(
+    page,
+    loansPage?.pageInfo.hasNext
+      ? Object.keys(pageCursors).length + 1
+      : Object.keys(pageCursors).length,
+  );
 
-  const dueThisWeek = (allLoans || []).filter((loan) => {
+  const dueThisWeek = displayedLoans.filter((loan) => {
     const dueAt = new Date(loan.nextPaymentDeadline).getTime();
     const sevenDays = 7 * 24 * 60 * 60 * 1000;
     return dueAt >= now && dueAt <= now + sevenDays;
   }).length;
 
-  const portfolioHealth = useMemo(() => {
-    if (!stats || stats.overdueCount === 0) return t("health.strong");
-    if (stats.overdueCount <= 2) return t("health.watch");
-    return t("health.atRisk");
-  }, [stats, t]);
+  const totalOwed = displayedLoans.reduce((sum, loan) => sum + loan.totalOwed, 0);
+  const overdueCount = displayedLoans.filter((loan) => loan.displayStatus === "defaulted").length;
+  const portfolioHealth =
+    overdueCount === 0
+      ? t("health.strong")
+      : overdueCount <= 2
+        ? t("health.watch")
+        : t("health.atRisk");
 
   if (isLoading) {
     return <LoansListSkeleton />;
@@ -96,7 +104,7 @@ export default function LoansPage() {
           {[
             {
               label: t("outstanding"),
-              value: formatCurrency(stats?.totalOwed || 0),
+              value: formatCurrency(totalOwed),
               icon: CircleDollarSign,
             },
             {
@@ -210,7 +218,7 @@ export default function LoansPage() {
               hasPrevious={page > 1}
               hasNext={Boolean(loansPage?.pageInfo.hasNext)}
               onPageChange={(nextPage) => {
-                if (nextPage <= totalPages && pageCursors[nextPage] !== undefined) {
+                if (pageCursors[nextPage] !== undefined) {
                   setPage(nextPage);
                   return;
                 }
@@ -233,7 +241,7 @@ export default function LoansPage() {
                   setPage(page + 1);
                 }
               }}
-              summary={t("pagination.pageOf", { current: page, total: totalPages })}
+              summary={`Showing ${displayedLoans.length} loans on page ${page}`}
             />
           )}
         </div>
