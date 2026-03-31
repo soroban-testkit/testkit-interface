@@ -11,7 +11,7 @@ import {
   TrendingUp,
   Calendar,
   DollarSign,
-  Search
+  Search,
 } from "lucide-react";
 import {
   useWalletStore,
