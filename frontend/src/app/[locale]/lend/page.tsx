@@ -4,7 +4,6 @@ import { Metadata } from "next";
 import { buildPageMetadata } from "@/app/lib/metadata";
 import { LendPageClient } from "./LendPageClient";
 
-
 type PageProps = {
   params: Promise<{ locale: string }>;
 };
