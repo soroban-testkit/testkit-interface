@@ -43,4 +43,3 @@ export function downloadCsv(filename: string, csv: string): void {
 
   URL.revokeObjectURL(url);
 }
-
