@@ -20,26 +20,25 @@ import {
 import { useUserStore } from "../stores/useUserStore";
 import { isJwtExpired, logoutUser, SessionExpiredError } from "../lib/session";
 
-// NEXT_PUBLIC_API_URL is required in production.
-// In development it falls back to localhost — but never silently in production.
+export class NetworkUnavailableError extends Error {
+  name = "NetworkUnavailableError";
+}
+
+const DEFAULT_API_URL = "http://localhost:3001";
+
+// Keep builds and prerendering safe even when CI/deploy env vars are absent.
+// Runtime environments should still override this with NEXT_PUBLIC_API_URL.
 function resolveApiUrl(): string {
   const url = process.env.NEXT_PUBLIC_API_URL;
 
-  if (!url) {
-    if (process.env.NODE_ENV === "production") {
-      throw new Error(
-        "[remitlend] NEXT_PUBLIC_API_URL is required in production but was not set. " +
-          "Add it to your deployment environment variables.",
-      );
-    }
-    console.warn(
-      "[remitlend] NEXT_PUBLIC_API_URL is not set. " +
-        "Falling back to http://localhost:3001 (development only).",
-    );
-    return "http://localhost:3001";
+  if (url) {
+    return url;
   }
 
-  return url;
+  console.warn(
+    "[remitlend] NEXT_PUBLIC_API_URL is not set. " + `Falling back to ${DEFAULT_API_URL}.`,
+  );
+  return DEFAULT_API_URL;
 }
 
 let cachedApiUrl: string | null = null;
@@ -98,6 +97,10 @@ export const queryKeys = {
  * - Throws a descriptive error on non-2xx responses
  */
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    throw new NetworkUnavailableError("You appear to be offline. Please reconnect and try again.");
+  }
+
   const headers = new Headers(options.headers);
   if (!headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -117,7 +120,14 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     }
   }
 
-  const response = await fetch(`${getApiUrl()}${path}`, { ...options, headers });
+  let response: Response;
+  try {
+    response = await fetch(`${getApiUrl()}${path}`, { ...options, headers });
+  } catch (error) {
+    throw new NetworkUnavailableError(
+      "Network request failed. Check your connection and try again.",
+    );
+  }
 
   if (response.status === 401 && token) {
     const error = await response
@@ -137,13 +147,15 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
+export type LoanStatus = "pending" | "active" | "repaid" | "defaulted" | "liquidated";
+
 export interface Loan {
   id: string;
   amount: number;
   currency: string;
   interestRate: number;
   termDays: number;
-  status: "pending" | "active" | "repaid" | "defaulted";
+  status: LoanStatus;
   borrowerId: string;
   createdAt: string;
 }
@@ -205,7 +217,7 @@ export interface BorrowerLoan {
   totalOwed: number;
   totalRepaid: number;
   nextPaymentDeadline: string;
-  status: "active" | "pending" | "repaid" | "defaulted";
+  status: LoanStatus;
   borrower: string;
   approvedAt?: string;
 }
@@ -224,7 +236,7 @@ export interface LoanDetails {
   totalRepaid: number;
   totalOwed: number;
   interestRate: number;
-  status: "active" | "repaid" | "defaulted" | "pending";
+  status: LoanStatus;
   requestedAt?: string;
   approvedAt?: string;
   events: LoanEvent[];
