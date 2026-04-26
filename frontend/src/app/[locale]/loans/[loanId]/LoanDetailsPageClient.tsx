@@ -67,17 +67,19 @@ export function LoanDetailsPageClient() {
     );
   }
 
-  const latestTxHash = loan.events.find((event) => Boolean(event.txHash))?.txHash;
-  const nextDeadline = (loan as unknown as { nextPaymentDeadline?: string }).nextPaymentDeadline;
+  const loanData = loan;
+  const latestTxHash = loanData.events.find((event) => Boolean(event.txHash))?.txHash;
+  const nextDeadline = (loanData as unknown as { nextPaymentDeadline?: string })
+    .nextPaymentDeadline;
   const daysRemaining = getDaysRemaining(nextDeadline);
 
   function exportCsv() {
-    const rows = loan.events.map((event) => ({
+    const rows = loanData.events.map((event) => ({
       date: event.timestamp,
       type: event.type,
       amount: event.amount,
       asset: "USD",
-      status: loan.status,
+      status: loanData.status,
       transactionHash: event.txHash ?? "",
     }));
 
