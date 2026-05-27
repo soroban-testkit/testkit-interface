@@ -188,6 +188,7 @@ export interface BorrowerLoan {
   status: LoanStatus;
   borrower: string;
   approvedAt?: string;
+  latestEventType?: string;
 }
 
 export interface LoanEvent {
@@ -321,7 +322,7 @@ interface RawPaginatedResponse<T> {
   total_count?: number | null;
 }
 
-interface CursorListParams {
+interface CursorListParams extends Record<string, unknown> {
   limit?: number;
   cursor?: string | null;
   status?: string;
@@ -1269,6 +1270,43 @@ export async function submitLoanTransaction(signedTxXdr: string) {
   return apiFetch<{ txHash: string; status: string; resultXdr?: string }>("/loans/submit", {
     method: "POST",
     body: JSON.stringify({ signedTxXdr }),
+  });
+}
+
+interface BuildLoanTxResponse {
+  success: boolean;
+  loanId: number;
+  unsignedTxXdr: string;
+  networkPassphrase: string;
+}
+
+export async function buildRefinanceLoanTransaction(params: {
+  loanId: string | number;
+  borrowerPublicKey: string;
+  newAmount: number;
+  newTerm: number;
+}) {
+  return apiFetch<BuildLoanTxResponse>(`/loans/${params.loanId}/build-refinance`, {
+    method: "POST",
+    body: JSON.stringify({
+      borrowerPublicKey: params.borrowerPublicKey,
+      newAmount: params.newAmount,
+      newTerm: params.newTerm,
+    }),
+  });
+}
+
+export async function buildExtendLoanTransaction(params: {
+  loanId: string | number;
+  borrowerPublicKey: string;
+  extraLedgers: number;
+}) {
+  return apiFetch<BuildLoanTxResponse>(`/loans/${params.loanId}/build-extend`, {
+    method: "POST",
+    body: JSON.stringify({
+      borrowerPublicKey: params.borrowerPublicKey,
+      extraLedgers: params.extraLedgers,
+    }),
   });
 }
 
