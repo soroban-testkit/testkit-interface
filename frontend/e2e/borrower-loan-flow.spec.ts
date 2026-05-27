@@ -368,6 +368,85 @@ test.describe("Borrower Loan Request Flow", () => {
     await expect(page.locator("text=4,500")).toBeVisible(); // Updated USDC balance
   });
 
+  test("Step 7: View loan event timeline on loan detail page", async ({ page }: { page: Page }) => {
+    // Mock loan detail with events
+    await page.route("**/api/loans/42", async (route: any) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            loanId: MOCK_LOAN_ID,
+            principal: 1000,
+            accruedInterest: 80,
+            totalRepaid: 580,
+            totalOwed: 500,
+            interestRate: 8,
+            status: "active",
+            borrower: MOCK_BORROWER_ADDRESS,
+            requestedAt: "2025-01-15T00:00:00Z",
+            approvedAt: "2025-01-20T00:00:00Z",
+          },
+        }),
+      });
+    });
+
+    // Mock loan events endpoint
+    await page.route("**/api/loans/42/events*", async (route: any) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          success: true,
+          data: {
+            loanId: MOCK_LOAN_ID,
+            events: [
+              {
+                event_id: 1,
+                event_type: "LoanRequested",
+                amount: "1000",
+                ledger_closed_at: "2025-01-15T10:00:00Z",
+                tx_hash: "tx_request_hash",
+              },
+              {
+                event_id: 2,
+                event_type: "LoanApproved",
+                amount: "0",
+                ledger_closed_at: "2025-01-20T14:30:00Z",
+                tx_hash: "tx_approve_hash",
+              },
+              {
+                event_id: 3,
+                event_type: "LoanRepaid",
+                amount: "580",
+                ledger_closed_at: "2025-02-15T09:00:00Z",
+                tx_hash: "tx_repay_hash",
+              },
+            ],
+          },
+        }),
+      });
+    });
+
+    await page.goto(`/en/loans/${MOCK_LOAN_ID}`);
+
+    // Verify timeline section is present
+    await expect(page.locator("text=Repayment timeline")).toBeVisible({ timeout: 10000 });
+
+    // Verify event types are rendered
+    await expect(page.locator("text=Loan requested")).toBeVisible();
+    await expect(page.locator("text=Loan approved")).toBeVisible();
+    await expect(page.locator("text=Repayment made")).toBeVisible();
+
+    // Verify amounts are shown
+    await expect(page.locator("text=$1,000.00")).toBeVisible();
+    await expect(page.locator("text=$580.00")).toBeVisible();
+
+    // Verify Export CSV button is enabled since events exist
+    await expect(page.getByRole("button", { name: /Export CSV/i })).toBeEnabled();
+  });
+
   test("Complete end-to-end borrower flow", async ({ page }: { page: Page }) => {
     // Mock User Credit Score
     await page.route("**/api/score/*", async (route: any) => {

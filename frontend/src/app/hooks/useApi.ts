@@ -37,6 +37,7 @@ export const queryKeys = {
   loans: {
     all: () => ["loans"] as const,
     detail: (id: string) => ["loans", id] as const,
+    events: (id: string) => ["loans", id, "events"] as const,
     config: () => ["loans", "config"] as const,
     borrowerPage: (address: string, params: Record<string, unknown>) =>
       ["loans", "borrower", address, params] as const,
@@ -493,6 +494,49 @@ export function useLoanAmortizationPreview(
       return response;
     },
     enabled: Boolean(params),
+    ...options,
+  });
+}
+
+/**
+ * Fetches chronological events for a specific loan.
+ * Returns mapped LoanEvent[] for use with the LoanTimeline component.
+ */
+export function useLoanEvents(
+  loanId: string | undefined,
+  options?: Omit<UseQueryOptions<LoanEvent[]>, "queryKey" | "queryFn">,
+) {
+  return useQuery<LoanEvent[]>({
+    queryKey: queryKeys.loans.events(loanId ?? ""),
+    queryFn: async () => {
+      interface RawEvent {
+        event_id: number;
+        event_type: string;
+        amount: string;
+        ledger_closed_at: string;
+        tx_hash?: string;
+      }
+      interface LoanEventsResponse {
+        success: boolean;
+        data: {
+          loanId: number;
+          events: RawEvent[];
+        };
+      }
+      const response = await apiFetch<LoanEventsResponse>(
+        `/loans/${loanId}/events`,
+      );
+      if (response?.success && response.data?.events) {
+        return response.data.events.map((e) => ({
+          type: e.event_type,
+          amount: e.amount,
+          timestamp: e.ledger_closed_at,
+          txHash: e.tx_hash,
+        }));
+      }
+      return [];
+    },
+    enabled: !!loanId,
     ...options,
   });
 }
