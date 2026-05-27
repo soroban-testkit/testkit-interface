@@ -1151,7 +1151,9 @@ export function useNotifications(
   options?: Omit<UseQueryOptions<NotificationsResponse>, "queryKey" | "queryFn">,
 ) {
   return useQuery<NotificationsResponse>({
-    queryKey: queryKeys.notifications.list(params),
+    queryKey: queryKeys.notifications.list(
+      params as Record<string, unknown>,
+    ),
     queryFn: async () => {
       const searchParams = new URLSearchParams();
       searchParams.set("limit", String(params.limit ?? 50));
