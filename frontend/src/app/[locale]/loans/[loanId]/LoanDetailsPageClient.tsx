@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ChevronRight, Clock, Wallet } from "lucide-react";
+import { ChevronRight, Clock, Wallet, Wifi, WifiOff } from "lucide-react";
 import { LoanDetailSkeleton } from "../../../components/skeletons/LoanDetailSkeleton";
 import { useLoan, useLoanAmortizationSchedule } from "../../../hooks/useApi";
+import { useLoanStream } from "../../../hooks/useLoanStream";
 import { RepaymentScheduleTable } from "../../../components/loan-wizard/RepaymentScheduleTable";
 import { RepaymentProgress } from "../../../components/ui/RepaymentProgress";
 import { LoanTimeline } from "../../../components/ui/LoanTimeline";
@@ -33,6 +34,7 @@ function getDaysRemaining(deadline: string | undefined): number | null {
 export function LoanDetailsPageClient() {
   const params = useParams<{ loanId: string }>();
   const loanId = params.loanId;
+  const realtimeStatus = useLoanStream(loanId);
   const { data: loan, isLoading, isError } = useLoan(loanId);
   const amortizationQuery = useLoanAmortizationSchedule(loanId, {
     retry: false,
@@ -116,6 +118,26 @@ export function LoanDetailsPageClient() {
               Track repayment timing, lender terms, and the current outstanding balance for this
               loan.
             </p>
+            <div
+              className={`mt-3 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+                realtimeStatus === "connected"
+                  ? "bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400"
+                  : realtimeStatus === "polling"
+                    ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
+                    : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+              }`}
+            >
+              {realtimeStatus === "connected" ? (
+                <Wifi className="h-3.5 w-3.5" />
+              ) : (
+                <WifiOff className="h-3.5 w-3.5" />
+              )}
+              {realtimeStatus === "connected"
+                ? "Live loan updates"
+                : realtimeStatus === "polling"
+                  ? "Polling while reconnecting"
+                  : "Connecting to live updates"}
+            </div>
           </div>
           <button
             type="button"
