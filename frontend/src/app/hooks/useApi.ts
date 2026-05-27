@@ -982,11 +982,24 @@ export function useCreditScore(
  */
 export function useYieldHistory(
   userId: string | undefined,
+  days: 7 | 30 | 90 = 30,
   options?: Omit<UseQueryOptions<YieldHistory[]>, "queryKey" | "queryFn">,
 ) {
   return useQuery<YieldHistory[]>({
-    queryKey: ["yieldHistory", userId],
-    queryFn: () => apiFetch<YieldHistory[]>(`/yield/${userId}/history`),
+    queryKey: ["yieldHistory", userId, days],
+    queryFn: async () => {
+      const response = await apiFetch<
+        PoolApiResponse<
+          Array<{
+            date: string;
+            earnings: number;
+            apy: number;
+            principal?: number;
+          }>
+        >
+      >(`/pool/depositor/${userId}/yield-history?days=${days}`);
+      return response.data;
+    },
     enabled: !!userId,
     ...options,
   });
