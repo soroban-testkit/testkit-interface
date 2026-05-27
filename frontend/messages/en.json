@@ -61,6 +61,7 @@
     "repay": "Repay",
     "dashboard": "Dashboard",
     "activity": "Activity",
+    "notifications": "Notifications",
     "adminDisputes": "Disputes"
   },
   "Loans": {
@@ -108,7 +109,56 @@
     "unlockedCount": "{unlocked} / {total}",
     "progress": "Progress",
     "unlocked": "Unlocked {date}",
-    "repaymentProgress": "Repayment Progress"
+    "repaymentProgress": "Repayment Progress",
+    "nft": {
+      "eyebrow": "Credit Asset",
+      "title": "Remittance NFT",
+      "description": "View the on-chain credit asset built from your remittance and repayment history.",
+      "connectTitle": "Connect your wallet",
+      "connectDescription": "Your Remittance NFT appears here once your wallet is connected.",
+      "error": "Unable to load your Remittance NFT right now.",
+      "emptyTitle": "No Remittance NFT yet",
+      "emptyDescription": "Send your first remittance to start building an on-chain credit asset.",
+      "emptyAction": "Send first remittance",
+      "score": "Score",
+      "historyHash": "History hash",
+      "defaultCount": "Default count",
+      "cooldownRemaining": "Transfer cooldown remaining",
+      "lastUpdateLedger": "Last update ledger",
+      "metadataUri": "Metadata URI",
+      "ledgers": "{count} ledgers",
+      "notAvailable": "Not available"
+    }
+  },
+  "Notifications": {
+    "eyebrow": "Inbox",
+    "title": "Notifications",
+    "description": "Review repayment reminders, score changes, loan updates, and alerts from one place.",
+    "viewAll": "View all notifications",
+    "unread": "Unread",
+    "markRead": "Mark read",
+    "markAllVisibleRead": "Mark unread as read",
+    "filters": {
+      "title": "Filters",
+      "unreadOnly": "Unread only"
+    },
+    "types": {
+      "all": "All",
+      "loan_approved": "Loan approved",
+      "repayment_due": "Repayment due",
+      "repayment_confirmed": "Repayment confirmed",
+      "loan_defaulted": "Loan defaulted",
+      "score_changed": "Score changed"
+    },
+    "empty": {
+      "title": "No notifications found",
+      "description": "New alerts and reminders will appear here.",
+      "action": "Back to dashboard"
+    },
+    "error": "Unable to load notifications. Please try again.",
+    "pagination": {
+      "summary": "Showing {count} of {total} notifications on page {page}"
+    }
   },
   "LoanCard": {
     "totalOwed": "Total Owed",
