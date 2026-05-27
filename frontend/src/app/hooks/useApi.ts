@@ -53,6 +53,12 @@ export const queryKeys = {
   notifications: {
     all: () => ["notifications"] as const,
   },
+  transactions: {
+    mine: (params: Record<string, unknown>) => ["transactions", "mine", params] as const,
+  },
+  governance: {
+    pending: () => ["admin", "governance", "pending"] as const,
+  },
   borrowerLoans: {
     byAddress: (address: string) => ["borrowerLoans", address] as const,
   },
@@ -253,6 +259,38 @@ export interface LoanStats {
   overdueCount: number;
 }
 
+export interface MyTransaction {
+  id: number;
+  txHash: string;
+  status: string;
+  submittedAt: string;
+  submittedBy: string | null;
+  transactionType: string;
+  resultXdr?: string | null;
+}
+
+export interface GovernanceSigner {
+  address: string;
+  approved: boolean;
+}
+
+export interface GovernancePendingProposal {
+  id: string;
+  targetContract: string;
+  proposedAdmin: string;
+  approvalCount: number;
+  threshold: number;
+  executableAt: string | null;
+  expiresAt: string | null;
+  signers: GovernanceSigner[];
+}
+
+export interface GovernancePendingResponse {
+  currentAdmin: string | null;
+  targetContract: string | null;
+  pendingProposal: GovernancePendingProposal | null;
+}
+
 export interface CursorPageInfo {
   limit: number;
   count: number;
@@ -334,6 +372,20 @@ async function fetchRemittancesPage(
 ): Promise<PaginatedListResult<Remittance>> {
   const response = await apiFetch<RawPaginatedResponse<Remittance[]>>(
     `/remittances${toQueryString({
+      limit: params.limit,
+      cursor: params.cursor,
+      status: params.status,
+    })}`,
+  );
+
+  return normalizePaginatedList(response);
+}
+
+async function fetchMyTransactionsPage(
+  params: CursorListParams = {},
+): Promise<PaginatedListResult<MyTransaction>> {
+  const response = await apiFetch<RawPaginatedResponse<MyTransaction[]>>(
+    `/transactions/me${toQueryString({
       limit: params.limit,
       cursor: params.cursor,
       status: params.status,
@@ -1216,5 +1268,20 @@ export async function submitLoanTransaction(signedTxXdr: string) {
   return apiFetch<{ txHash: string; status: string; resultXdr?: string }>("/loans/submit", {
     method: "POST",
     body: JSON.stringify({ signedTxXdr }),
+  });
+}
+
+export function useMyTransactions(params: CursorListParams = {}) {
+  return useQuery({
+    queryKey: queryKeys.transactions.mine(params),
+    queryFn: () => fetchMyTransactionsPage(params),
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useAdminGovernancePending() {
+  return useQuery({
+    queryKey: queryKeys.governance.pending(),
+    queryFn: () => apiFetch<GovernancePendingResponse>("/admin/governance/pending"),
   });
 }
