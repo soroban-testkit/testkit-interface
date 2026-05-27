@@ -18,7 +18,10 @@ export function RecentTransactionsDrawer() {
   const t = useTranslations("RecentTransactions");
   const [open, setOpen] = useState(false);
   const authToken = useUserStore((state) => state.authToken);
-  const { data, isLoading, isError } = useMyTransactions({ limit: 20, enabled: open && Boolean(authToken) });
+  const { data, isLoading, isError } = useMyTransactions({
+    limit: 20,
+    enabled: open && Boolean(authToken),
+  });
   const transactions = data?.items ?? [];
 
   return (

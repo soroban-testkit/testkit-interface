@@ -156,5 +156,30 @@
   "Settings": {
     "language": "Idioma",
     "selectLanguage": "Seleccione el idioma"
+  },
+  "LoanDetails": {
+    "actions": {
+      "refinance": "Refinanciar",
+      "requestExtension": "Solicitar extensión"
+    },
+    "common": {
+      "cancel": "Cancelar",
+      "confirming": "Confirmando..."
+    },
+    "refinance": {
+      "title": "Refinanciar préstamo",
+      "principal": "Nuevo monto principal",
+      "interestRate": "Tasa de interés (%)",
+      "term": "Plazo",
+      "previewTitle": "Amortización proyectada",
+      "previewDescription": "Vista previa del plan de pago esperado antes de firmar.",
+      "submit": "Construir, Firmar y Enviar"
+    },
+    "extension": {
+      "title": "Solicitar extensión",
+      "extraLedgers": "Ledgers adicionales",
+      "newDueDate": "Nueva fecha de vencimiento",
+      "submit": "Construir, Firmar y Enviar"
+    }
   }
 }

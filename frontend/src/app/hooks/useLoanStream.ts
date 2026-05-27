@@ -35,7 +35,9 @@ export function useLoanStream(loanId: string | undefined): RealtimeStatus {
     lastInvalidateAtRef.current = now;
 
     queryClient.invalidateQueries({ queryKey: queryKeys.loans.detail(loanId) });
-    queryClient.invalidateQueries({ queryKey: [...queryKeys.loans.detail(loanId), "amortization"] });
+    queryClient.invalidateQueries({
+      queryKey: [...queryKeys.loans.detail(loanId), "amortization"],
+    });
 
     if (borrowerAddress) {
       queryClient.invalidateQueries({
