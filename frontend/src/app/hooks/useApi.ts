@@ -61,6 +61,9 @@ export const queryKeys = {
   auth: {
     verify: () => ["auth", "verify"] as const,
   },
+  score: {
+    breakdown: (userId: string) => ["scoreBreakdown", userId] as const,
+  },
   borrowerLoans: {
     byAddress: (address: string) => ["borrowerLoans", address] as const,
   },
@@ -182,6 +185,26 @@ export interface CreditScoreResponse {
   userId: string;
   score: number;
   band: string;
+}
+
+export interface ScoreBreakdownMetrics {
+  totalLoans: number;
+  repaidOnTime: number;
+  repaidLate: number;
+  defaulted: number;
+  totalRepaid: number;
+  averageRepaymentTime: string;
+  longestStreak: number;
+  currentStreak: number;
+}
+
+export interface ScoreBreakdownResponse {
+  success: boolean;
+  userId: string;
+  score: number;
+  band: string;
+  breakdown: ScoreBreakdownMetrics;
+  history: Array<{ date: string | null; score: number; event: string }>;
 }
 
 export interface RemittanceNftMetadata {
@@ -853,6 +876,18 @@ export function useCreditScoreHistory(
   });
 }
 
+export function useScoreBreakdown(
+  userId: string | undefined,
+  options?: Omit<UseQueryOptions<ScoreBreakdownResponse>, "queryKey" | "queryFn">,
+) {
+  return useQuery<ScoreBreakdownResponse>({
+    queryKey: queryKeys.score.breakdown(userId ?? ""),
+    queryFn: async () => apiFetch<ScoreBreakdownResponse>(`/score/${userId}/breakdown`),
+    enabled: !!userId,
+    ...options,
+  });
+}
+
 export function useRemittanceNft(
   walletAddress: string | undefined,
   options?: Omit<UseQueryOptions<RemittanceNftMetadata | null>, "queryKey" | "queryFn">,
@@ -1174,6 +1209,37 @@ export function useNotifications(
     },
     refetchInterval: 60_000,
     ...options,
+  });
+}
+
+export interface NotificationPreferences {
+  emailEnabled: boolean;
+  smsEnabled: boolean;
+  phone: string | null;
+  perTypeOverrides: Record<string, boolean>;
+}
+
+export function useNotificationPreferences(
+  options?: Omit<UseQueryOptions<NotificationPreferences>, "queryKey" | "queryFn">,
+) {
+  return useQuery<NotificationPreferences>({
+    queryKey: ["notificationPreferences"],
+    queryFn: async () => apiFetch<NotificationPreferences>("/notifications/preferences"),
+    ...options,
+  });
+}
+
+export function useUpdateNotificationPreferences() {
+  const queryClient = useQueryClient();
+  return useMutation<NotificationPreferences, Error, NotificationPreferences>({
+    mutationFn: (payload) =>
+      apiFetch<NotificationPreferences>("/notifications/preferences", {
+        method: "PUT",
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notificationPreferences"] });
+    },
   });
 }
 
