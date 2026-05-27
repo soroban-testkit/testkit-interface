@@ -52,6 +52,7 @@ export const queryKeys = {
   },
   notifications: {
     all: () => ["notifications"] as const,
+    list: (params: Record<string, unknown>) => ["notifications", params] as const,
   },
   adminDisputes: {
     all: () => ["admin", "disputes"] as const,
@@ -173,6 +174,21 @@ export interface CreditScoreResponse {
   userId: string;
   score: number;
   band: string;
+}
+
+export interface RemittanceNftMetadata {
+  score: number;
+  historyHash: string;
+  metadataUri: string;
+  defaultCount: number;
+  transferCooldownRemaining: number;
+  lastUpdateLedger: number;
+}
+
+interface RemittanceNftResponse {
+  success: boolean;
+  walletAddress: string;
+  nft: RemittanceNftMetadata | null;
 }
 
 export interface LoanConfig {
@@ -828,6 +844,21 @@ export function useCreditScoreHistory(
   });
 }
 
+export function useRemittanceNft(
+  walletAddress: string | undefined,
+  options?: Omit<UseQueryOptions<RemittanceNftMetadata | null>, "queryKey" | "queryFn">,
+) {
+  return useQuery<RemittanceNftMetadata | null>({
+    queryKey: ["remittanceNft", walletAddress],
+    queryFn: async () => {
+      const response = await apiFetch<RemittanceNftResponse>(`/score/${walletAddress}/nft`);
+      return response.nft;
+    },
+    enabled: !!walletAddress,
+    ...options,
+  });
+}
+
 /**
  * Fetches the current credit score for the authenticated borrower.
  */
@@ -1087,18 +1118,32 @@ interface NotificationsResponse {
   unreadCount: number;
 }
 
+export interface NotificationsQueryParams {
+  limit?: number;
+  unread?: boolean;
+  type?: NotificationType | "all";
+  page?: number;
+}
+
 /**
  * Fetches the authenticated user's notifications.
  * Polls every 60s as a fallback alongside the SSE stream.
  */
 export function useNotifications(
+  params: NotificationsQueryParams = {},
   options?: Omit<UseQueryOptions<NotificationsResponse>, "queryKey" | "queryFn">,
 ) {
   return useQuery<NotificationsResponse>({
-    queryKey: queryKeys.notifications.all(),
+    queryKey: queryKeys.notifications.list(params),
     queryFn: async () => {
+      const searchParams = new URLSearchParams();
+      searchParams.set("limit", String(params.limit ?? 50));
+      if (params.unread !== undefined) searchParams.set("unread", String(params.unread));
+      if (params.type && params.type !== "all") searchParams.set("type", params.type);
+      if (params.page) searchParams.set("page", String(params.page));
+
       const res = await apiFetch<{ success: boolean; data: NotificationsResponse }>(
-        "/notifications?limit=50",
+        `/notifications?${searchParams.toString()}`,
       );
       return res.data;
     },

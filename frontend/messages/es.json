@@ -61,6 +61,7 @@
     "repay": "Repagar",
     "dashboard": "Tablero",
     "activity": "Actividad",
+    "notifications": "Notificaciones",
     "adminDisputes": "Disputas"
   },
   "Loans": {
@@ -108,7 +109,56 @@
     "unlockedCount": "{unlocked} / {total}",
     "progress": "Progreso",
     "unlocked": "Desbloqueado {date}",
-    "repaymentProgress": "Progreso de reembolso"
+    "repaymentProgress": "Progreso de reembolso",
+    "nft": {
+      "eyebrow": "Activo crediticio",
+      "title": "Remittance NFT",
+      "description": "Consulta el activo crediticio en cadena creado a partir de tus remesas e historial de pagos.",
+      "connectTitle": "Conecta tu billetera",
+      "connectDescription": "Tu Remittance NFT aparecerá aquí cuando conectes tu billetera.",
+      "error": "No se pudo cargar tu Remittance NFT en este momento.",
+      "emptyTitle": "Aún no tienes Remittance NFT",
+      "emptyDescription": "Envía tu primera remesa para empezar a construir un activo crediticio en cadena.",
+      "emptyAction": "Enviar primera remesa",
+      "score": "Puntaje",
+      "historyHash": "Hash del historial",
+      "defaultCount": "Incumplimientos",
+      "cooldownRemaining": "Enfriamiento de transferencia restante",
+      "lastUpdateLedger": "Último ledger actualizado",
+      "metadataUri": "URI de metadatos",
+      "ledgers": "{count} ledgers",
+      "notAvailable": "No disponible"
+    }
+  },
+  "Notifications": {
+    "eyebrow": "Bandeja",
+    "title": "Notificaciones",
+    "description": "Revisa recordatorios de pago, cambios de puntaje, actualizaciones de préstamos y alertas en un solo lugar.",
+    "viewAll": "Ver todas las notificaciones",
+    "unread": "No leída",
+    "markRead": "Marcar leída",
+    "markAllVisibleRead": "Marcar no leídas como leídas",
+    "filters": {
+      "title": "Filtros",
+      "unreadOnly": "Solo no leídas"
+    },
+    "types": {
+      "all": "Todas",
+      "loan_approved": "Préstamo aprobado",
+      "repayment_due": "Pago pendiente",
+      "repayment_confirmed": "Pago confirmado",
+      "loan_defaulted": "Préstamo en incumplimiento",
+      "score_changed": "Puntaje cambiado"
+    },
+    "empty": {
+      "title": "No se encontraron notificaciones",
+      "description": "Las nuevas alertas y recordatorios aparecerán aquí.",
+      "action": "Volver al panel"
+    },
+    "error": "No se pudieron cargar las notificaciones. Inténtalo de nuevo.",
+    "pagination": {
+      "summary": "Mostrando {count} de {total} notificaciones en la página {page}"
+    }
   },
   "LoanCard": {
     "totalOwed": "Total adeudado",
