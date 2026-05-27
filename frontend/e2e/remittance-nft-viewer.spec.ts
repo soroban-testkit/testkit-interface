@@ -21,7 +21,12 @@ test.beforeEach(async ({ page }: { page: Page }) => {
       "remitlend-user",
       JSON.stringify({
         state: {
-          user: { id: address, walletAddress: address, email: "alice@example.com", kycVerified: true },
+          user: {
+            id: address,
+            walletAddress: address,
+            email: "alice@example.com",
+            kycVerified: true,
+          },
           authToken: "test-token",
           isAuthenticated: true,
         },
@@ -32,7 +37,7 @@ test.beforeEach(async ({ page }: { page: Page }) => {
 });
 
 test("shows Remittance NFT metadata on the kingdom page", async ({ page }: { page: Page }) => {
-  await page.route(/\/(api\/)?score\/[^/]+\/nft$/, async (route) => {
+  await page.route("**/score/*/nft", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -56,14 +61,14 @@ test("shows Remittance NFT metadata on the kingdom page", async ({ page }: { pag
   await expect(page.getByRole("heading", { name: "Remittance NFT" })).toBeVisible();
   await expect(page.getByText("742")).toBeVisible();
   await expect(page.getByText("1,440 ledgers")).toBeVisible();
-  await expect(page.getByRole("link", { name: /example.com\/remittance-nft.json/i })).toHaveAttribute(
+  await expect(page.locator('a[href="https://example.com/remittance-nft.json"]')).toHaveAttribute(
     "target",
     "_blank",
   );
 });
 
 test("shows empty NFT state with remittance CTA", async ({ page }: { page: Page }) => {
-  await page.route(/\/(api\/)?score\/[^/]+\/nft$/, async (route) => {
+  await page.route("**/score/*/nft", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",

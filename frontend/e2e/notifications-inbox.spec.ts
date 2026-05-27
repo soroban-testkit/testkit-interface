@@ -21,7 +21,12 @@ test.beforeEach(async ({ page }: { page: Page }) => {
       "remitlend-user",
       JSON.stringify({
         state: {
-          user: { id: address, walletAddress: address, email: "alice@example.com", kycVerified: true },
+          user: {
+            id: address,
+            walletAddress: address,
+            email: "alice@example.com",
+            kycVerified: true,
+          },
           authToken: "test-token",
           isAuthenticated: true,
         },

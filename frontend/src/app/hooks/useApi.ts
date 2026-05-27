@@ -68,6 +68,14 @@ export const queryKeys = {
     stats: () => ["pool", "stats"] as const,
     depositor: (address: string) => ["pool", "depositor", address] as const,
   },
+  transactions: {
+    all: () => ["transactions"] as const,
+    mine: (params: Record<string, unknown>) => ["transactions", "me", params] as const,
+  },
+  governance: {
+    all: () => ["admin", "governance"] as const,
+    pending: () => ["admin", "governance", "pending"] as const,
+  },
 } as const;
 
 // ─── Base fetch helper ────────────────────────────────────────────────────────
@@ -334,7 +342,8 @@ function normalizeDispute(row: RawAdminDispute): AdminDispute {
     borrower: stringFrom(row.borrower ?? row.borrowerAddress ?? row.borrower_address) ?? "",
     reason: stringFrom(row.reason) ?? "",
     status: stringFrom(row.status, "open") as AdminDispute["status"],
-    createdAt: stringFrom(row.createdAt ?? row.created_at ?? row.submittedAt ?? row.submitted_at) ?? "",
+    createdAt:
+      stringFrom(row.createdAt ?? row.created_at ?? row.submittedAt ?? row.submitted_at) ?? "",
     submittedAt: stringFrom(row.submittedAt ?? row.submitted_at, undefined),
     resolution: stringFrom(row.resolution, undefined),
     resolvedAt: stringFrom(row.resolvedAt ?? row.resolved_at, undefined),
@@ -982,13 +991,29 @@ export function useCreditScore(
  */
 export function useYieldHistory(
   userId: string | undefined,
-  options?: Omit<UseQueryOptions<YieldHistory[]>, "queryKey" | "queryFn">,
+  options?: Omit<UseQueryOptions<YieldHistory[]>, "queryKey" | "queryFn"> & {
+    days?: 7 | 30 | 90;
+  },
 ) {
+  const { days = 30, ...queryOptions } = options ?? {};
+
   return useQuery<YieldHistory[]>({
-    queryKey: ["yieldHistory", userId],
-    queryFn: () => apiFetch<YieldHistory[]>(`/yield/${userId}/history`),
+    queryKey: ["yieldHistory", userId, days],
+    queryFn: async () => {
+      const response = await apiFetch<
+        PoolApiResponse<
+          Array<{
+            date: string;
+            earnings: number;
+            apy: number;
+            principal?: number;
+          }>
+        >
+      >(`/pool/depositor/${userId}/yield-history?days=${days}`);
+      return response.data;
+    },
     enabled: !!userId,
-    ...options,
+    ...queryOptions,
   });
 }
 
@@ -1134,7 +1159,7 @@ export function useNotifications(
   options?: Omit<UseQueryOptions<NotificationsResponse>, "queryKey" | "queryFn">,
 ) {
   return useQuery<NotificationsResponse>({
-    queryKey: queryKeys.notifications.list(params),
+    queryKey: queryKeys.notifications.list(params as Record<string, unknown>),
     queryFn: async () => {
       const searchParams = new URLSearchParams();
       searchParams.set("limit", String(params.limit ?? 50));
