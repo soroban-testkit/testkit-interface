@@ -128,6 +128,31 @@
     "viewDetails": "View Details",
     "details": "Details"
   },
+  "RecentTransactions": {
+    "open": "Open recent transactions",
+    "close": "Close recent transactions",
+    "title": "Recent transactions",
+    "description": "Copy hashes and reopen Stellar Expert links.",
+    "loading": "Loading recent transactions...",
+    "empty": "No submitted transactions yet.",
+    "error": "Unable to load recent transactions."
+  },
+  "Governance": {
+    "title": "Governance console",
+    "description": "Read-only view of pending multisig admin-transfer proposals.",
+    "forbidden": "Admin access is required to view governance proposals.",
+    "loading": "Loading governance status...",
+    "error": "Unable to load governance status.",
+    "empty": "No pending governance proposal.",
+    "currentAdmin": "Current admin",
+    "targetContract": "Target contract",
+    "pendingProposal": "Pending proposal",
+    "approvals": "approvals",
+    "timeToExecutable": "Time to executable",
+    "expiresAt": "Expires at",
+    "approved": "Approved",
+    "pending": "Pending"
+  },
   "Settings": {
     "language": "Language",
     "selectLanguage": "Select Language"
