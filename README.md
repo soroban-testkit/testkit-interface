@@ -188,6 +188,10 @@ The repository is organized as a monorepo containing three core packages:
      --network-passphrase "Test SDF Network ; September 2015"
    ```
 
+## 🔒 Security
+
+For details on how to report a security vulnerability, please see our [Security Policy](SECURITY.md).
+
 ## 🤝 Contributing
 
 We welcome contributions from developers of all skill levels! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on how to get started.

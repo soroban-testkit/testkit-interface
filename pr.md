@@ -1,26 +1,29 @@
-# RemitLend Frontend and Backend Performance Improvements
+## Summary
 
-This PR implements several key frontend improvements for RemitLend, focusing on UX consistency, precision enforcement, and session management. It also addresses a failing backend test in the Event Indexer.
+This PR resolves several infrastructure, testing, and documentation issues to improve the repository's baseline health before release. It adds automated load testing, container vulnerability scanning, issue/PR templates, and a security disclosure policy.
 
-## Implementation Details
+## Type of change
 
-### Frontend Improvements
+- [x] Bug fix
+- [x] New feature
+- [x] Documentation update
+- [x] Refactor / chore
+- [ ] Smart contract change
 
-1.  **Consistent Empty States (#580)**:
-    *   Introduced a reusable `EmptyState` component which simplifies logic across the app.
-    *   Refactored the Activity Page, Loans Page, and Dashboard recent activity section.
-    *   Added a `cn` utility for flexible Tailwind class merging.
+## Related issue
 
-2.  **Decimal Precision Enforcement (#578)**:
-    *   Created a precision utility (`truncateDecimals`) to enforce asset-specific decimal limits (XLM: 7, USDC/EURC: 2) on user inputs.
-    *   Updated `RemittanceForm`, `LoanRepaymentForm`, and asset-amount steps to prevent invalid Stellar transaction submissions.
+Closes #905
+Closes #906
+Closes #907
+Closes #908
 
-3.  **Logout and Session Expiry Flow (#562)**:
-    *   Implemented a unified `useLogout` hook to clear all app stores and caches.
-    *   Added a global `SessionExpiryHandler` that listens for 401 responses and triggers a clean redirect.
+## Changes
 
-4.  **Modal Accessibility (#567)**:
-    *   Audited the `Modal` component and confirmed full compliance with focus-trapping and keyboard accessibility standards.
+- Added `baseline.js` k6 script and `loadtest.yml` workflow for manual performance testing.
+- Added Trivy container scanning to `deploy-staging.yml` to fail on CRITICAL vulnerabilities.
+- Added `.trivyignore` and `docs/wiki/security-scanning.md`.
+- Added GitHub issue templates (Bug, Feature, Security, Config) and a PR template.
+- Added `SECURITY.md` defining our disclosure policy and linked it from `README.md`.
 
 ### Backend Fixes
 
@@ -40,3 +43,16 @@ Fixes: #580 fixed
 Fixes: #578 fixed
 Fixes: #562 fixed
 Fixes: #567 fixed
+
+## Testing
+
+- [x] Tested locally (Syntax and sanity checks)
+- [ ] Added/updated unit tests
+- [ ] Manually tested UI flow
+
+## Checklist
+
+- [x] My code follows the project style
+- [x] I've updated docs if needed
+- [x] No console errors or warnings
+- [x] I've rebased on latest `main`
