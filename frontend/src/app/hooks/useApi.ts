@@ -325,6 +325,7 @@ interface CursorListParams {
   limit?: number;
   cursor?: string | null;
   status?: string;
+  enabled?: boolean;
 }
 
 interface BorrowerLoansPageResponse {
@@ -1275,6 +1276,7 @@ export function useMyTransactions(params: CursorListParams = {}) {
   return useQuery({
     queryKey: queryKeys.transactions.mine(params),
     queryFn: () => fetchMyTransactionsPage(params),
+    enabled: params.enabled ?? true,
     placeholderData: keepPreviousData,
   });
 }

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Clock3, X } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useMyTransactions } from "../../hooks/useApi";
+import { useUserStore } from "../../stores/useUserStore";
 import { TxHashLink } from "../ui/TxHashLink";
 
 function formatDate(value: string) {
@@ -16,7 +17,8 @@ function formatDate(value: string) {
 export function RecentTransactionsDrawer() {
   const t = useTranslations("RecentTransactions");
   const [open, setOpen] = useState(false);
-  const { data, isLoading, isError } = useMyTransactions({ limit: 20 });
+  const authToken = useUserStore((state) => state.authToken);
+  const { data, isLoading, isError } = useMyTransactions({ limit: 20, enabled: open && Boolean(authToken) });
   const transactions = data?.items ?? [];
 
   return (
