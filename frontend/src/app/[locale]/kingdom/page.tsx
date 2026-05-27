@@ -1,12 +1,23 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowUpRight, BadgeCheck, Crown, FileText, SendHorizontal, TimerReset } from "lucide-react";
+import {
+  ArrowUpRight,
+  BadgeCheck,
+  Crown,
+  FileText,
+  SendHorizontal,
+  TimerReset,
+} from "lucide-react";
 import dynamic from "next/dynamic";
 import { Suspense } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { useGamificationStore } from "../../stores/useGamificationStore";
-import { selectWalletAddress, selectIsWalletConnected, useWalletStore } from "../../stores/useWalletStore";
+import {
+  selectWalletAddress,
+  selectIsWalletConnected,
+  useWalletStore,
+} from "../../stores/useWalletStore";
 import { useRemittanceNft } from "../../hooks/useApi";
 import { Card } from "../../components/ui/Card";
 import { SkeletonCard } from "../../components/ui/Skeleton";
@@ -41,10 +52,11 @@ export default function KingdomPage() {
   const kingdomTitle = useGamificationStore((state) => state.kingdomTitle);
   const address = useWalletStore(selectWalletAddress);
   const isConnected = useWalletStore(selectIsWalletConnected);
-  const { data: nft, isLoading: isNftLoading, isError: isNftError } = useRemittanceNft(
-    address ?? undefined,
-    { enabled: isConnected && Boolean(address) },
-  );
+  const {
+    data: nft,
+    isLoading: isNftLoading,
+    isError: isNftError,
+  } = useRemittanceNft(address ?? undefined, { enabled: isConnected && Boolean(address) });
 
   return (
     <main className="min-h-screen p-8 lg:p-12 max-w-7xl mx-auto space-y-8">
@@ -137,9 +149,7 @@ export default function KingdomPage() {
           <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
             <div className="rounded-xl border border-zinc-200 p-5 dark:border-zinc-800">
               <p className="text-sm text-zinc-500 dark:text-zinc-400">{t("nft.score")}</p>
-              <p className="mt-2 text-5xl font-bold text-zinc-900 dark:text-zinc-50">
-                {nft.score}
-              </p>
+              <p className="mt-2 text-5xl font-bold text-zinc-900 dark:text-zinc-50">{nft.score}</p>
               <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
                 {t("nft.historyHash")}
               </p>
@@ -181,7 +191,9 @@ export default function KingdomPage() {
               >
                 <div className="flex items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="text-sm text-zinc-500 dark:text-zinc-400">{t("nft.metadataUri")}</p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      {t("nft.metadataUri")}
+                    </p>
                     <p className="mt-1 truncate font-mono text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                       {nft.metadataUri || t("nft.notAvailable")}
                     </p>

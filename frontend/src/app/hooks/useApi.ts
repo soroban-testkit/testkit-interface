@@ -334,7 +334,8 @@ function normalizeDispute(row: RawAdminDispute): AdminDispute {
     borrower: stringFrom(row.borrower ?? row.borrowerAddress ?? row.borrower_address) ?? "",
     reason: stringFrom(row.reason) ?? "",
     status: stringFrom(row.status, "open") as AdminDispute["status"],
-    createdAt: stringFrom(row.createdAt ?? row.created_at ?? row.submittedAt ?? row.submitted_at) ?? "",
+    createdAt:
+      stringFrom(row.createdAt ?? row.created_at ?? row.submittedAt ?? row.submitted_at) ?? "",
     submittedAt: stringFrom(row.submittedAt ?? row.submitted_at, undefined),
     resolution: stringFrom(row.resolution, undefined),
     resolvedAt: stringFrom(row.resolvedAt ?? row.resolved_at, undefined),
