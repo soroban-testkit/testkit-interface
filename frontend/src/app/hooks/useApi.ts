@@ -983,9 +983,12 @@ export function useCreditScore(
  */
 export function useYieldHistory(
   userId: string | undefined,
-  days: 7 | 30 | 90 = 30,
-  options?: Omit<UseQueryOptions<YieldHistory[]>, "queryKey" | "queryFn">,
+  options?: Omit<UseQueryOptions<YieldHistory[]>, "queryKey" | "queryFn"> & {
+    days?: 7 | 30 | 90;
+  },
 ) {
+  const { days = 30, ...queryOptions } = options ?? {};
+
   return useQuery<YieldHistory[]>({
     queryKey: ["yieldHistory", userId, days],
     queryFn: async () => {
@@ -1002,7 +1005,7 @@ export function useYieldHistory(
       return response.data;
     },
     enabled: !!userId,
-    ...options,
+    ...queryOptions,
   });
 }
 
