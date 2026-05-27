@@ -188,5 +188,30 @@
   "Settings": {
     "language": "Language",
     "selectLanguage": "Select Language"
+  },
+  "LoanDetails": {
+    "actions": {
+      "refinance": "Refinance",
+      "requestExtension": "Request extension"
+    },
+    "common": {
+      "cancel": "Cancel",
+      "confirming": "Confirming..."
+    },
+    "refinance": {
+      "title": "Refinance loan",
+      "principal": "New principal amount",
+      "interestRate": "Interest rate (%)",
+      "term": "Term",
+      "previewTitle": "Projected amortization",
+      "previewDescription": "Preview of expected repayment schedule before signing.",
+      "submit": "Build, Sign & Submit"
+    },
+    "extension": {
+      "title": "Request extension",
+      "extraLedgers": "Additional ledgers",
+      "newDueDate": "New due date",
+      "submit": "Build, Sign & Submit"
+    }
   }
 }

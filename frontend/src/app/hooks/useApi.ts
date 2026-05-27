@@ -17,36 +17,11 @@ import {
   type UseQueryOptions,
   type UseMutationOptions,
 } from "@tanstack/react-query";
+import { LoanStatusBadge, type LoanStatus } from "../components/ui/LoanStatusBadge";
 import { useUserStore } from "../stores/useUserStore";
 import { isJwtExpired, logoutUser, SessionExpiredError } from "../lib/session";
 
-export class NetworkUnavailableError extends Error {
-  name = "NetworkUnavailableError";
-}
-
-const DEFAULT_API_URL = "http://localhost:3001";
-
-// Keep builds and prerendering safe even when CI/deploy env vars are absent.
-// Runtime environments should still override this with NEXT_PUBLIC_API_URL.
-function resolveApiUrl(): string {
-  const url = process.env.NEXT_PUBLIC_API_URL;
-
-  if (url) {
-    return url;
-  }
-
-  console.warn(
-    "[remitlend] NEXT_PUBLIC_API_URL is not set. " + `Falling back to ${DEFAULT_API_URL}.`,
-  );
-  return DEFAULT_API_URL;
-}
-
-let cachedApiUrl: string | null = null;
-function getApiUrl(): string {
-  if (cachedApiUrl !== null) return cachedApiUrl;
-  cachedApiUrl = resolveApiUrl();
-  return cachedApiUrl;
-}
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
 // ─── Query key factory ────────────────────────────────────────────────────────
 
@@ -104,10 +79,6 @@ export const queryKeys = {
  * - Throws a descriptive error on non-2xx responses
  */
 async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
-  if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    throw new NetworkUnavailableError("You appear to be offline. Please reconnect and try again.");
-  }
-
   const headers = new Headers(options.headers);
   if (!headers.has("Content-Type")) {
     headers.set("Content-Type", "application/json");
@@ -127,14 +98,7 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
     }
   }
 
-  let response: Response;
-  try {
-    response = await fetch(`${getApiUrl()}${path}`, { ...options, headers });
-  } catch (error) {
-    throw new NetworkUnavailableError(
-      "Network request failed. Check your connection and try again.",
-    );
-  }
+  const response = await fetch(`${API_URL}${path}`, { ...options, headers });
 
   if (response.status === 401 && token) {
     const error = await response
@@ -153,8 +117,6 @@ async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> 
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-export type LoanStatus = "pending" | "active" | "repaid" | "defaulted" | "liquidated";
 
 export interface Loan {
   id: string;
@@ -236,6 +198,7 @@ export interface BorrowerLoan {
   status: LoanStatus;
   borrower: string;
   approvedAt?: string;
+  latestEventType?: string;
 }
 
 export interface LoanEvent {
@@ -252,10 +215,12 @@ export interface LoanDetails {
   totalRepaid: number;
   totalOwed: number;
   interestRate: number;
-  status: LoanStatus;
+  status: "active" | "repaid" | "defaulted" | "pending" | "liquidated";
   requestedAt?: string;
   approvedAt?: string;
   events: LoanEvent[];
+  lateFees?: number;
+  collateralLocked?: number;
 }
 
 export interface AdminDisputeLoanSummary {
@@ -408,6 +373,38 @@ export interface LoanStats {
   overdueCount: number;
 }
 
+export interface MyTransaction {
+  id: number;
+  txHash: string;
+  status: string;
+  submittedAt: string;
+  submittedBy: string | null;
+  transactionType: string;
+  resultXdr?: string | null;
+}
+
+export interface GovernanceSigner {
+  address: string;
+  approved: boolean;
+}
+
+export interface GovernancePendingProposal {
+  id: string;
+  targetContract: string;
+  proposedAdmin: string;
+  approvalCount: number;
+  threshold: number;
+  executableAt: string | null;
+  expiresAt: string | null;
+  signers: GovernanceSigner[];
+}
+
+export interface GovernancePendingResponse {
+  currentAdmin: string | null;
+  targetContract: string | null;
+  pendingProposal: GovernancePendingProposal | null;
+}
+
 export interface CursorPageInfo {
   limit: number;
   count: number;
@@ -438,10 +435,11 @@ interface RawPaginatedResponse<T> {
   total_count?: number | null;
 }
 
-interface CursorListParams {
+interface CursorListParams extends Record<string, unknown> {
   limit?: number;
   cursor?: string | null;
   status?: string;
+  enabled?: boolean;
 }
 
 interface BorrowerLoansPageResponse {
@@ -489,6 +487,20 @@ async function fetchRemittancesPage(
 ): Promise<PaginatedListResult<Remittance>> {
   const response = await apiFetch<RawPaginatedResponse<Remittance[]>>(
     `/remittances${toQueryString({
+      limit: params.limit,
+      cursor: params.cursor,
+      status: params.status,
+    })}`,
+  );
+
+  return normalizePaginatedList(response);
+}
+
+async function fetchMyTransactionsPage(
+  params: CursorListParams = {},
+): Promise<PaginatedListResult<MyTransaction>> {
+  const response = await apiFetch<RawPaginatedResponse<MyTransaction[]>>(
+    `/transactions/me${toQueryString({
       limit: params.limit,
       cursor: params.cursor,
       status: params.status,
@@ -861,7 +873,7 @@ export function useCreditScore(
         return;
       }
 
-      const url = `${getApiUrl()}/api/events/stream?borrower=${encodeURIComponent(walletAddress)}`;
+      const url = `${API_URL}/api/events/stream?borrower=${encodeURIComponent(walletAddress)}`;
       const es = new EventSource(url, { withCredentials: true });
       eventSource = es;
 
@@ -1453,5 +1465,58 @@ export async function submitLoanTransaction(signedTxXdr: string) {
   return apiFetch<{ txHash: string; status: string; resultXdr?: string }>("/loans/submit", {
     method: "POST",
     body: JSON.stringify({ signedTxXdr }),
+  });
+}
+
+interface BuildLoanTxResponse {
+  success: boolean;
+  loanId: number;
+  unsignedTxXdr: string;
+  networkPassphrase: string;
+}
+
+export async function buildRefinanceLoanTransaction(params: {
+  loanId: string | number;
+  borrowerPublicKey: string;
+  newAmount: number;
+  newTerm: number;
+}) {
+  return apiFetch<BuildLoanTxResponse>(`/loans/${params.loanId}/build-refinance`, {
+    method: "POST",
+    body: JSON.stringify({
+      borrowerPublicKey: params.borrowerPublicKey,
+      newAmount: params.newAmount,
+      newTerm: params.newTerm,
+    }),
+  });
+}
+
+export async function buildExtendLoanTransaction(params: {
+  loanId: string | number;
+  borrowerPublicKey: string;
+  extraLedgers: number;
+}) {
+  return apiFetch<BuildLoanTxResponse>(`/loans/${params.loanId}/build-extend`, {
+    method: "POST",
+    body: JSON.stringify({
+      borrowerPublicKey: params.borrowerPublicKey,
+      extraLedgers: params.extraLedgers,
+    }),
+  });
+}
+
+export function useMyTransactions(params: CursorListParams = {}) {
+  return useQuery({
+    queryKey: queryKeys.transactions.mine(params),
+    queryFn: () => fetchMyTransactionsPage(params),
+    enabled: params.enabled ?? true,
+    placeholderData: keepPreviousData,
+  });
+}
+
+export function useAdminGovernancePending() {
+  return useQuery({
+    queryKey: queryKeys.governance.pending(),
+    queryFn: () => apiFetch<GovernancePendingResponse>("/admin/governance/pending"),
   });
 }
