@@ -68,6 +68,14 @@ export const queryKeys = {
     stats: () => ["pool", "stats"] as const,
     depositor: (address: string) => ["pool", "depositor", address] as const,
   },
+  transactions: {
+    all: () => ["transactions"] as const,
+    mine: (params: Record<string, unknown>) => ["transactions", "me", params] as const,
+  },
+  governance: {
+    all: () => ["admin", "governance"] as const,
+    pending: () => ["admin", "governance", "pending"] as const,
+  },
 } as const;
 
 // ─── Base fetch helper ────────────────────────────────────────────────────────
