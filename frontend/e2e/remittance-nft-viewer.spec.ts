@@ -37,7 +37,7 @@ test.beforeEach(async ({ page }: { page: Page }) => {
 });
 
 test("shows Remittance NFT metadata on the kingdom page", async ({ page }: { page: Page }) => {
-  await page.route(/\/(api\/)?score\/[^/]+\/nft$/, async (route) => {
+  await page.route("**/score/*/nft", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -67,7 +67,7 @@ test("shows Remittance NFT metadata on the kingdom page", async ({ page }: { pag
 });
 
 test("shows empty NFT state with remittance CTA", async ({ page }: { page: Page }) => {
-  await page.route(/\/(api\/)?score\/[^/]+\/nft$/, async (route) => {
+  await page.route("**/score/*/nft", async (route) => {
     await route.fulfill({
       status: 200,
       contentType: "application/json",
