@@ -61,9 +61,10 @@ test("shows Remittance NFT metadata on the kingdom page", async ({ page }: { pag
   await expect(page.getByRole("heading", { name: "Remittance NFT" })).toBeVisible();
   await expect(page.getByText("742")).toBeVisible();
   await expect(page.getByText("1,440 ledgers")).toBeVisible();
-  await expect(
-    page.getByRole("link", { name: /example.com\/remittance-nft.json/i }),
-  ).toHaveAttribute("target", "_blank");
+  await expect(page.locator('a[href="https://example.com/remittance-nft.json"]')).toHaveAttribute(
+    "target",
+    "_blank",
+  );
 });
 
 test("shows empty NFT state with remittance CTA", async ({ page }: { page: Page }) => {
