@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSSE, type RealtimeStatus } from "./useSSE";
 import { queryKeys } from "./useApi";
@@ -24,9 +24,16 @@ interface LoanStreamEvent {
 export function useLoanStream(loanId: string | undefined): RealtimeStatus {
   const queryClient = useQueryClient();
   const borrowerAddress = useUserStore((s) => s.user?.walletAddress);
+  const lastInvalidateAtRef = useRef(0);
 
   const invalidateLoanQueries = useCallback(() => {
     if (!loanId) return;
+    const now = Date.now();
+    if (now - lastInvalidateAtRef.current < 500) {
+      return;
+    }
+    lastInvalidateAtRef.current = now;
+
     queryClient.invalidateQueries({ queryKey: queryKeys.loans.detail(loanId) });
     queryClient.invalidateQueries({ queryKey: [...queryKeys.loans.detail(loanId), "amortization"] });
 
