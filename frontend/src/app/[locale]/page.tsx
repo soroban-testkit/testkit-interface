@@ -23,9 +23,11 @@ import {
   useUserBalance,
   useUserProfile,
   useCreditScoreHistory,
+  useScoreBreakdown,
 } from "../hooks/useApi";
 import { DashboardSkeleton } from "../components/skeletons/DashboardSkeleton";
 import { CreditScoreGauge } from "../components/ui/CreditScoreGauge";
+import { CreditScoreBreakdown } from "../components/ui/CreditScoreBreakdown";
 import { ErrorBoundary } from "../components/global_ui/ErrorBoundary";
 import { Tooltip } from "../components/ui/Tooltip";
 import React, { useMemo, useState, useEffect } from "react";
