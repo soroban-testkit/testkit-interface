@@ -1,4 +1,4 @@
-import { test, expect, type Page } from "@playwright/test";
+import { test, expect, type Page, type Route } from "@playwright/test";
 
 /**
  * E2E Test Suite for Borrower Loan Request Flow
@@ -35,12 +35,13 @@ test.describe("Borrower Loan Request Flow", () => {
       version: 0,
     };
 
-    await page.addInitScript((state: any) => {
-      window.localStorage.setItem("remitlend-wallet", JSON.stringify(state));
-    }, walletState);
+    const walletStateJson = JSON.stringify(walletState);
+    await page.addInitScript((stateJson: string) => {
+      window.localStorage.setItem("remitlend-wallet", stateJson);
+    }, walletStateJson);
 
     // Mock User Profile
-    await page.route("**/api/user/profile", async (route: any) => {
+    await page.route("**/api/user/profile", async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -54,7 +55,7 @@ test.describe("Borrower Loan Request Flow", () => {
     });
 
     // Mock Pool Stats
-    await page.route("**/api/pool/stats", async (route: any) => {
+    await page.route("**/api/pool/stats", async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -72,7 +73,7 @@ test.describe("Borrower Loan Request Flow", () => {
     });
 
     // Mock Loan Config
-    await page.route("**/api/loans/config", async (route: any) => {
+    await page.route("**/api/loans/config", async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -173,7 +174,7 @@ test.describe("Borrower Loan Request Flow", () => {
     await expect(page.locator("text=Ready to Sign")).toBeVisible();
 
     // Mock loan creation request
-    await page.route("**/api/loans", async (route: any) => {
+    await page.route("**/api/loans", async (route: Route) => {
       if (route.request().method() === "POST") {
         await route.fulfill({
           status: 200,
@@ -204,7 +205,7 @@ test.describe("Borrower Loan Request Flow", () => {
 
   test("Step 4: See pending loan in loans list", async ({ page }: { page: Page }) => {
     // Mock borrower's loans list with pending loan
-    await page.route("**/api/loans/borrower/**", async (route: any) => {
+    await page.route("**/api/loans/borrower/**", async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -324,7 +325,7 @@ test.describe("Borrower Loan Request Flow", () => {
     await page.fill('input[type="number"]', "500");
 
     // Mock repayment submission
-    await page.route(`**/api/loans/${MOCK_LOAN_ID}/repay`, async (route: any) => {
+    await page.route(`**/api/loans/${MOCK_LOAN_ID}/repay`, async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -352,9 +353,10 @@ test.describe("Borrower Loan Request Flow", () => {
       version: 0,
     };
 
-    await page.evaluate((state: any) => {
-      window.localStorage.setItem("remitlend-wallet", JSON.stringify(state));
-    }, updatedWalletState);
+    const updatedWalletStateJson = JSON.stringify(updatedWalletState);
+    await page.evaluate((stateJson: string) => {
+      window.localStorage.setItem("remitlend-wallet", stateJson);
+    }, updatedWalletStateJson);
 
     // Submit repayment
     await page.click('button:has-text("Review Repayment")');
@@ -370,7 +372,7 @@ test.describe("Borrower Loan Request Flow", () => {
 
   test("Step 7: View loan event timeline on loan detail page", async ({ page }: { page: Page }) => {
     // Mock loan detail with events
-    await page.route("**/api/loans/42", async (route: any) => {
+    await page.route("**/api/loans/42", async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
@@ -393,7 +395,7 @@ test.describe("Borrower Loan Request Flow", () => {
     });
 
     // Mock loan events endpoint
-    await page.route("**/api/loans/42/events*", async (route: any) => {
+    await page.route("**/api/loans/42/events*", async (route: Route) => {
       await route.fulfill({
         status: 200,
         contentType: "application/json",
