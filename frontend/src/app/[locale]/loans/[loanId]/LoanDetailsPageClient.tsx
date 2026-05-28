@@ -6,7 +6,7 @@ import { useParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { ChevronRight, Clock, Wallet, Wifi, WifiOff } from "lucide-react";
 import { LoanDetailSkeleton } from "../../../components/skeletons/LoanDetailSkeleton";
-import { useLoan, useLoanAmortizationSchedule } from "../../../hooks/useApi";
+import { useLoan, useLoanAmortizationSchedule, useLoanEvents } from "../../../hooks/useApi";
 import { useLoanStream } from "../../../hooks/useLoanStream";
 import { RepaymentScheduleTable } from "../../../components/loan-wizard/RepaymentScheduleTable";
 import { RefinanceLoanModal } from "../../../components/loan-wizard/RefinanceLoanModal";
@@ -46,6 +46,11 @@ export function LoanDetailsPageClient() {
   const amortizationQuery = useLoanAmortizationSchedule(loanId, {
     retry: false,
   });
+  const {
+    data: events,
+    isLoading: eventsLoading,
+    isError: eventsError,
+  } = useLoanEvents(loanId);
 
   if (isLoading) {
     return <LoanDetailSkeleton />;
@@ -85,7 +90,8 @@ export function LoanDetailsPageClient() {
   const canManageApprovedLoan = normalizedStatus === "approved" || normalizedStatus === "active";
 
   function exportCsv() {
-    const rows = loanData.events.map((event) => ({
+    const sourceEvents = events ?? loanData.events;
+    const rows = sourceEvents.map((event) => ({
       date: event.timestamp,
       type: event.type,
       amount: event.amount,
@@ -155,7 +161,7 @@ export function LoanDetailsPageClient() {
           <button
             type="button"
             onClick={exportCsv}
-            disabled={loan.events.length === 0}
+            disabled={!events || events.length === 0}
             className="inline-flex items-center justify-center rounded-full border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-200 dark:hover:bg-zinc-900"
           >
             Export CSV
@@ -223,7 +229,26 @@ export function LoanDetailsPageClient() {
               Repayment timeline
             </h3>
             <div className="mt-3">
-              <LoanTimeline events={loan.events} />
+              {eventsLoading ? (
+                <div className="animate-pulse space-y-3">
+                  {[1, 2, 3].map((i) => (
+                    <div key={i} className="flex gap-3">
+                      <div className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-zinc-200 dark:bg-zinc-700" />
+                      <div className="flex-1 rounded-xl border border-zinc-200 p-3 dark:border-zinc-800">
+                        <div className="h-4 w-24 rounded bg-zinc-200 dark:bg-zinc-700" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : eventsError ? (
+                <p className="text-sm text-red-500 dark:text-red-400">
+                  Failed to load loan events.
+                </p>
+              ) : events && events.length > 0 ? (
+                <LoanTimeline events={events} />
+              ) : (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">No loan events recorded yet.</p>
+              )}
             </div>
           </div>
 

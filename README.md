@@ -192,6 +192,10 @@ The repository is organized as a monorepo containing three core packages:
 
 We welcome contributions from developers of all skill levels! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on how to get started.
 
+### Environment Variables
+
+See [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) for a full reference of all environment variables across backend, frontend, and scripts. Each `.env.example` file also links to this document.
+
 ### Quick Contribution Guide
 
 1. Fork the repository.
