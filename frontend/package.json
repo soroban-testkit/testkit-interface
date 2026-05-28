@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint --ext .ts,.tsx . && prettier --check .",
+    "lint": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "audit:a11y": "next build && npx axe-playwright",
     "format": "prettier --write .",

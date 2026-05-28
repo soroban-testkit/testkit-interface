@@ -136,6 +136,8 @@ export function LendPageClient() {
 
   useEffect(() => {
     if (!lastDepositTimestamp || cooldownSeconds <= 0) {
+      // Reset the displayed countdown when there is no active cooldown.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setCooldownRemainingSeconds(0);
       return;
     }
@@ -426,11 +428,11 @@ export function LendPageClient() {
                   <button
                     type="submit"
                     disabled={
-                      withdrawalOp.isLoading ||
-                      !!withdrawPrecisionError ||
-                      isWithdrawCooldownActive
+                      withdrawalOp.isLoading || !!withdrawPrecisionError || isWithdrawCooldownActive
                     }
-                    aria-describedby={isWithdrawCooldownActive ? "withdraw-cooldown-help" : undefined}
+                    aria-describedby={
+                      isWithdrawCooldownActive ? "withdraw-cooldown-help" : undefined
+                    }
                     className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
                   >
                     <ArrowDownLeft className="h-4 w-4" />

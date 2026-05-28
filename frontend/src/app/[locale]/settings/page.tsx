@@ -24,10 +24,8 @@ import {
   selectWalletNetwork,
 } from "../../stores/useWalletStore";
 import { useUserStore, selectUser } from "../../stores/useUserStore";
-import { logoutUser } from "../../lib/session";import {
-  useNotificationPreferences,
-  useUpdateNotificationPreferences,
-} from "../../hooks/useApi";
+import { logoutUser } from "../../lib/session";
+import { useNotificationPreferences, useUpdateNotificationPreferences } from "../../hooks/useApi";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface NotificationPrefs {
@@ -276,6 +274,9 @@ function NotificationsSection() {
   useEffect(() => {
     if (!data) return;
 
+    // Sync server-fetched preferences into local editable form state once the
+    // query resolves. This is the intended pattern here, not a render-loop.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPrefs((current) => ({
       ...current,
       email: data.emailEnabled,
@@ -286,8 +287,7 @@ function NotificationsSection() {
     setSaved(false);
   }, [data]);
 
-  const toggle = (key: keyof NotificationPrefs) =>
-    setPrefs((p) => ({ ...p, [key]: !p[key] }));
+  const toggle = (key: keyof NotificationPrefs) => setPrefs((p) => ({ ...p, [key]: !p[key] }));
 
   const perTypeOverrides = {
     loan_approved: prefs.loanApproved,
@@ -403,18 +403,18 @@ function NotificationsSection() {
         </div>
 
         {error && (
-          <p className="text-sm text-red-600 dark:text-red-400">Unable to load notification settings.</p>
+          <p className="text-sm text-red-600 dark:text-red-400">
+            Unable to load notification settings.
+          </p>
         )}
-        {saveError && (
-          <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>
-        )}
+        {saveError && <p className="text-sm text-red-600 dark:text-red-400">{saveError}</p>}
         <Button
           variant="primary"
           onClick={handleSave}
-          disabled={updateNotificationPreferences.isLoading || isLoading}
+          disabled={updateNotificationPreferences.isPending || isLoading}
           className="w-full sm:w-auto"
         >
-          {updateNotificationPreferences.isLoading
+          {updateNotificationPreferences.isPending
             ? "Saving..."
             : saved
               ? "Saved!"
@@ -549,7 +549,7 @@ function DisplaySection() {
               return (
                 <button
                   key={opt}
-                  onClick={() => setTheme(opt as any)}
+                  onClick={() => setTheme(opt)}
                   className={`px-3 py-1 rounded-lg text-sm font-medium transition-colors ${
                     active
                       ? "bg-indigo-600 text-white"
