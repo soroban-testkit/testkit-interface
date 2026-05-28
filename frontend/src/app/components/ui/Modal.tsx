@@ -7,10 +7,7 @@ import { twMerge } from "tailwind-merge";
 import { motion, AnimatePresence } from "framer-motion";
 import { useModalFocusTrap } from "../../hooks/useModalFocusTrap";
 
-/** Tool to merge Tailwind classes safely */
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from "@/app/utils/cn";
 
 interface ModalProps {
   isOpen: boolean;
