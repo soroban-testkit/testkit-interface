@@ -263,7 +263,7 @@ The backend serves as a bridge between the frontend and blockchain, handling off
 - `GET /api/health` - Health check
 - `GET /api/score/:userId` - Get user credit score
 - `POST /api/score/simulate` - Simulate remittance history
-- `GET /api-docs` - Swagger documentation
+- `GET /docs` - Swagger documentation
 
 **Middleware**:
 - `errorHandler` - Centralized error handling
