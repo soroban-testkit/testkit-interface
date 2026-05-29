@@ -9,10 +9,11 @@ import { useModalFocusTrap } from "../../hooks/useModalFocusTrap";
 
 import { cn } from "@/app/utils/cn";
 
-interface ModalProps {
+ interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
   title?: string;
+  ariaLabel?: string;
   children: React.ReactNode;
   className?: string;
   size?: "sm" | "md" | "lg" | "xl";
@@ -29,6 +30,7 @@ const Modal: React.FC<ModalProps> = ({
   isOpen,
   onClose,
   title,
+  ariaLabel,
   children,
   className,
   size = "lg",
