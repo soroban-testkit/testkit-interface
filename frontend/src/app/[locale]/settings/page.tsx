@@ -26,6 +26,7 @@ import {
 import { useUserStore, selectUser } from "../../stores/useUserStore";
 import { logoutUser } from "../../lib/session";
 import { useNotificationPreferences, useUpdateNotificationPreferences } from "../../hooks/useApi";
+import { COPY_FEEDBACK_RESET_MS } from "../../components/ui";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface NotificationPrefs {
@@ -61,7 +62,7 @@ function CopyButton({ value }: { value: string }) {
   const handleCopy = () => {
     navigator.clipboard.writeText(value).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), COPY_FEEDBACK_RESET_MS);
     });
   };
 

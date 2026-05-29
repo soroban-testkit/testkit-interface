@@ -28,6 +28,7 @@ import {
 } from "../../stores/useWalletStore";
 import Link from "next/link";
 import { QRCodeSVG } from "qrcode.react";
+import { COPY_FEEDBACK_RESET_MS } from "../../components/ui";
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -139,7 +140,7 @@ function CopyButton({ value }: { value: string }) {
   const handleCopy = () => {
     navigator.clipboard.writeText(value).then(() => {
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      setTimeout(() => setCopied(false), COPY_FEEDBACK_RESET_MS);
     });
   };
   return (
