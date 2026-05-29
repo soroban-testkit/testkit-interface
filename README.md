@@ -33,11 +33,21 @@ The repository is organized as a monorepo containing three core packages:
 - **`contracts/`**: Soroban (Rust) smart contracts covering the lending pools, loan management, and NFT collateral logic.
 
 *For a detailed look at how these components interact, see our [Architecture Diagram](ARCHITECTURE.md).*
+*New contributor? Start with the in-repo wiki: [docs/wiki/README.md](docs/wiki/README.md).*
+
+### API Reference
+
+The backend exposes an interactive Swagger UI for exploring and testing API endpoints. Start the backend server (see [Quick Start](#quick-start-with-docker-recommended) or [Manual Setup](#manual-setup)), then open:
+
+- **Swagger UI**: [http://localhost:3001/docs](http://localhost:3001/docs)
+- **OpenAPI JSON**: [http://localhost:3001/docs.json](http://localhost:3001/docs.json)
+
+Both endpoints are gated to non-production environments (`NODE_ENV !== "production"`).
 
 ## 🛠 Tech Stack
 
 - **Blockchain**: [Stellar](https://stellar.org) (Soroban Smart Contracts)
-- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS
+- **Frontend**: Next.js 16, React 19, TypeScript, Tailwind CSS
 - **Backend**: Node.js, Express, TypeScript, Jest
 - **Wallet Integration**: [Stellar Wallet Kit](https://github.com/stellar/stellar-wallet-kit) (Freighter)
 
@@ -70,12 +80,15 @@ The repository is organized as a monorepo containing three core packages:
    ```bash
    docker compose up --build
    ```
-   The backend waits for PostgreSQL to be ready, runs `npm run migrate:up` to apply SQL migrations, then starts the API.
+   Docker Compose uses healthchecks so services start cleanly:
+   - PostgreSQL (`db`) is marked healthy via `pg_isready`
+   - The backend waits for healthy Postgres before starting, runs `npm run migrate:up`, then starts the API
+   - The backend container is marked healthy by polling `GET /health` every 10 seconds (3 retries)
 
 4. **Access the application:**
    - Frontend: [http://localhost:3000](http://localhost:3000)
    - Backend API: [http://localhost:3001](http://localhost:3001)
-   - API Documentation: [http://localhost:3001/api-docs](http://localhost:3001/api-docs)
+   - API Documentation: [http://localhost:3001/docs](http://localhost:3001/docs)
 
 ### Manual Setup
 
@@ -184,18 +197,26 @@ The repository is organized as a monorepo containing three core packages:
      --network-passphrase "Test SDF Network ; September 2015"
    ```
 
+## 🔒 Security
+
+For details on how to report a security vulnerability, please see our [Security Policy](SECURITY.md).
+
 ## 🤝 Contributing
 
 We welcome contributions from developers of all skill levels! Please see our [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on how to get started.
 
+### Environment Variables
+
+See [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) for a full reference of all environment variables across backend, frontend, and scripts. Each `.env.example` file also links to this document.
+
 ### Quick Contribution Guide
 
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Make your changes and commit (`git commit -m 'Add amazing feature'`)
-4. Push to your branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
+1. Fork the repository.
+2. Create a feature branch (`git checkout -b feature/amazing-feature`).
+3. Make your changes and commit (`git commit -m 'Add amazing feature'`).
+4. Push to your branch (`git push origin feature/amazing-feature`).
+5. Open a Pull Request.
 
 ## 📄 License
 
-This project is licensed under the ISC License. See the `LICENSE` file for details..
+This project is licensed under the ISC License. See the `LICENSE` file for details.

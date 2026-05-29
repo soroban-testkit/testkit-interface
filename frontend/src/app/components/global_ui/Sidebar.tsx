@@ -11,13 +11,34 @@ import {
   X,
   CreditCard,
   Clock,
+  ShieldAlert,
 } from "lucide-react";
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { useTranslations, useLocale } from "next-intl";
+import {
+  useWalletStore,
+  selectWalletStatus,
+  selectWalletNetwork,
+} from "../../stores/useWalletStore";
+import { useUserStore } from "../../stores/useUserStore";
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+function getTokenRole(token: string | null): string | undefined {
+  if (!token || typeof window === "undefined") return undefined;
+
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return undefined;
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(Math.ceil(normalized.length / 4) * 4, "=");
+    return (JSON.parse(window.atob(padded)) as { role?: string }).role;
+  } catch {
+    return undefined;
+  }
 }
 
 interface SidebarProps {
@@ -30,14 +51,23 @@ export function Sidebar({ onClose, className }: SidebarProps) {
   const t = useTranslations("Navigation");
   const locale = useLocale();
 
+  const status = useWalletStore(selectWalletStatus);
+  const network = useWalletStore(selectWalletNetwork);
+  const user = useUserStore((state) => state.user);
+  const token = useUserStore((state) => state.authToken);
+  const isConnected = status === "connected";
+  const isAdmin = (user?.role ?? getTokenRole(token)) === "admin";
+
   const navItems = [
     { name: t("home"), href: `/${locale}`, icon: LayoutDashboard },
     { name: t("loans"), href: `/${locale}/loans`, icon: HandCoins },
     { name: "Lend", href: `/${locale}/lend`, icon: PiggyBank },
-    { name: "Remittances", href: `/${locale}/remittances`, icon: SendHorizontal },
+    { name: t("liquidations"), href: `/${locale}/liquidations`, icon: ShieldAlert },
     { name: t("activity"), href: `/${locale}/activity`, icon: Clock },
     { name: "Wallet", href: `/${locale}/wallet`, icon: CreditCard },
-    { name: "Settings", href: `/${locale}/settings`, icon: Settings },
+    ...(isAdmin
+      ? [{ name: t("adminDisputes"), href: `/${locale}/admin/disputes`, icon: ShieldAlert }]
+      : []),
   ];
 
   return (
@@ -102,12 +132,17 @@ export function Sidebar({ onClose, className }: SidebarProps) {
       <div className="p-4 border-t border-zinc-200 dark:border-zinc-800">
         <div className="rounded-xl bg-zinc-50 p-4 dark:bg-zinc-900">
           <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">
-            System Status
+            Wallet Status
           </p>
           <div className="flex items-center gap-2">
-            <div className="h-2 w-2 rounded-full bg-green-500" />
+            <div
+              className={cn(
+                "h-2 w-2 rounded-full",
+                isConnected ? "bg-green-500" : "bg-zinc-300 dark:bg-zinc-700",
+              )}
+            />
             <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-              Mainnet Connected
+              {isConnected ? `${network?.name || "Connected"}` : "Disconnected"}
             </span>
           </div>
         </div>

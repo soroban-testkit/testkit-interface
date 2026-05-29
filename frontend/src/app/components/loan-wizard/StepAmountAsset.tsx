@@ -5,6 +5,13 @@ import { Button } from "../ui/Button";
 import { Input } from "../ui/Input";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/Card";
 import type { LoanWizardData } from "./LoanApplicationWizard";
+import {
+  buildAmountHelperText,
+  getPrecisionError,
+  sanitizeAmountInput,
+  formatAmountOnBlur,
+  getAssetDecimals,
+} from "../../utils/amount";
 
 const TERM_OPTIONS = [
   { label: "30 days", days: 30 as const },
@@ -43,10 +50,18 @@ interface StepAmountAssetProps {
 export function StepAmountAsset({ data, onChange, onNext, error, onError }: StepAmountAssetProps) {
   const amountNumber = Number(data.amount || "0");
   const minAmount = 100;
+  const asset = data.asset || "USDC";
+  const decimals = getAssetDecimals(asset);
+  const precisionError = getPrecisionError(data.amount, asset);
+  const helperText = buildAmountHelperText(data.amount, asset, decimals);
 
   const validate = (): boolean => {
     if (!data.amount || Number.isNaN(amountNumber) || amountNumber <= 0) {
       onError("Enter a valid loan amount.");
+      return false;
+    }
+    if (precisionError) {
+      onError(precisionError);
       return false;
     }
     if (data.maxAmount === 0) {
@@ -93,6 +108,7 @@ export function StepAmountAsset({ data, onChange, onNext, error, onError }: Step
                     type="button"
                     onClick={() => onChange({ asset: asset.value })}
                     className="flex items-center gap-3 rounded-lg border border-indigo-500 bg-indigo-50 px-4 py-3 text-left transition dark:bg-indigo-500/10"
+                    aria-pressed={data.asset === asset.value}
                   >
                     <span className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-xs font-bold text-white">
                       {asset.value[0]}
@@ -112,22 +128,33 @@ export function StepAmountAsset({ data, onChange, onNext, error, onError }: Step
 
             {/* Amount */}
             <Input
-              label={`Amount (${data.asset})`}
-              type="number"
+              label={`Amount (${asset})`}
+              type="text"
+              inputMode="decimal"
               min={minAmount}
               max={data.maxAmount || undefined}
+              step={Math.pow(10, -decimals)}
               value={data.amount}
               onChange={(e) => {
-                onChange({ amount: e.target.value });
+                onChange({ amount: sanitizeAmountInput(e.target.value) });
                 onError(null);
+              }}
+              onBlur={(e) => {
+                const formatted = formatAmountOnBlur(e.target.value, asset);
+                if (formatted && formatted !== e.target.value) {
+                  onChange({ amount: formatted });
+                }
               }}
               placeholder="1000"
               required
               helperText={
-                data.maxAmount === 0
+                precisionError ||
+                helperText ||
+                (data.maxAmount === 0
                   ? "Not eligible"
-                  : `Eligible range: ${formatMoney(minAmount)} – ${formatMoney(data.maxAmount)}`
+                  : `Eligible range: ${formatMoney(minAmount)} – ${formatMoney(data.maxAmount)} • Max ${decimals} decimal places`)
               }
+              error={precisionError || undefined}
             />
 
             {/* Term */}
@@ -146,6 +173,7 @@ export function StepAmountAsset({ data, onChange, onNext, error, onError }: Step
                         ? "border-indigo-500 bg-indigo-50 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300"
                         : "border-zinc-300 text-zinc-700 dark:border-zinc-700 dark:text-zinc-300"
                     }`}
+                    aria-pressed={data.termDays === option.days}
                   >
                     {option.label}
                   </button>

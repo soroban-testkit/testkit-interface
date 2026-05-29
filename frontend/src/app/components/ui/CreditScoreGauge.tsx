@@ -1,13 +1,16 @@
 "use client";
 
 import { useMemo } from "react";
-import { ArrowUp, ArrowDown } from "lucide-react";
+import { ArrowUp, ArrowDown, RefreshCw, AlertCircle } from "lucide-react";
 
 interface CreditScoreGaugeProps {
-  score: number;
+  score?: number | null;
   previousScore?: number;
   min?: number;
   max?: number;
+  isLoading?: boolean;
+  error?: Error | null;
+  onRetry?: () => void;
 }
 
 type ScoreBand = {
@@ -50,9 +53,16 @@ export function CreditScoreGauge({
   previousScore,
   min = 300,
   max = 850,
+  isLoading = false,
+  error = null,
+  onRetry,
 }: CreditScoreGaugeProps) {
-  const band = useMemo(() => getBand(score), [score]);
-  const delta = previousScore != null ? score - previousScore : null;
+  const numericScore = typeof score === "number" && Number.isFinite(score) ? score : null;
+
+  const band = useMemo(() => (numericScore == null ? BANDS[0] : getBand(numericScore)), [
+    numericScore,
+  ]);
+  const delta = previousScore != null && numericScore != null ? numericScore - previousScore : null;
 
   const cx = 120;
   const cy = 120;
@@ -61,7 +71,122 @@ export function CreditScoreGauge({
   const endAngle = 120;
   const totalArc = endAngle - startAngle;
 
-  const clampedScore = Math.max(min, Math.min(max, score));
+  const clampedScore = numericScore != null ? Math.max(min, Math.min(max, numericScore)) : min;
+  const fraction = (clampedScore - min) / (max - min);
+  const scoreAngle = startAngle + fraction * totalArc;
+
+  // Background arc segments per band
+  const bandArcs = useMemo(() => {
+    return BANDS.map((b) => {
+      const bStart = startAngle + ((b.range[0] - min) / (max - min)) * totalArc;
+      const bEnd = startAngle + ((Math.min(b.range[1], max) - min) / (max - min)) * totalArc;
+      return { ...b, path: describeArc(cx, cy, r, bStart, bEnd) };
+    });
+  }, [min, max]);
+
+  // Active arc from start to current score
+  const activePath = describeArc(cx, cy, r, startAngle, scoreAngle);
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <div className="relative" role="status" aria-label="Loading credit score">
+          <svg width="240" height="160" viewBox="0 60 240 140">
+            <path
+              d={describeArc(120, 120, 100, -120, 120)}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="14"
+              strokeLinecap="round"
+              className="text-zinc-200 dark:text-zinc-800 animate-pulse"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pt-4">
+            <RefreshCw className="h-8 w-8 animate-spin text-zinc-400" />
+          </div>
+        </div>
+        <span className="text-sm font-semibold text-zinc-400">Loading score...</span>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <div className="relative" role="alert" aria-label="Error loading credit score">
+          <svg width="240" height="160" viewBox="0 60 240 140">
+            <path
+              d={describeArc(120, 120, 100, -120, 120)}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="14"
+              strokeLinecap="round"
+              className="text-zinc-200 dark:text-zinc-800"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pt-4">
+            <AlertCircle className="h-8 w-8 text-red-500" />
+          </div>
+        </div>
+        <span className="text-sm font-semibold text-red-600 dark:text-red-400">
+          Failed to load score
+        </span>
+        <p className="max-w-xs text-center text-xs text-zinc-500 dark:text-zinc-400">
+          {error.message || "Unable to fetch your credit score"}
+        </p>
+        {onRetry && (
+          <button
+            onClick={onRetry}
+            className="flex items-center gap-2 rounded-md bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Retry
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // New user with no score (score is 0 or below minimum)
+  if (numericScore === null || numericScore === 0 || numericScore < min) {
+    return (
+      <div className="flex flex-col items-center gap-3">
+        <div className="relative" role="img" aria-label="No credit score yet">
+          <svg width="240" height="160" viewBox="0 60 240 140">
+            <path
+              d={describeArc(120, 120, 100, -120, 120)}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="14"
+              strokeLinecap="round"
+              className="text-zinc-200 dark:text-zinc-800"
+            />
+          </svg>
+          <div className="absolute inset-0 flex flex-col items-center justify-center pt-4">
+            <span className="text-4xl font-bold text-zinc-400">--</span>
+          </div>
+        </div>
+        <span className="text-sm font-semibold text-zinc-500">No Score Yet</span>
+        <p className="max-w-xs text-center text-xs text-zinc-500 dark:text-zinc-400">
+          Complete your first remittance or loan repayment to establish your credit score.
+        </p>
+      </div>
+    );
+  }
+
+  const band = useMemo(() => getBand(numericScore), [numericScore]);
+  const delta = previousScore != null ? numericScore - previousScore : null;
+
+  const cx = 120;
+  const cy = 120;
+  const r = 100;
+  const startAngle = -120;
+  const endAngle = 120;
+  const totalArc = endAngle - startAngle;
+
+  const clampedScore = Math.max(min, Math.min(max, numericScore));
   const fraction = (clampedScore - min) / (max - min);
   const scoreAngle = startAngle + fraction * totalArc;
 
@@ -79,7 +204,11 @@ export function CreditScoreGauge({
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="relative" role="img" aria-label={`Credit score: ${score}, ${band.label}`}>
+      <div
+        className="relative"
+        role="img"
+        aria-label={`Credit score: ${numericScore}, ${band.label}`}
+      >
         <svg width="240" height="160" viewBox="0 60 240 140">
           {/* Background band arcs */}
           {bandArcs.map((b) => (
@@ -119,7 +248,7 @@ export function CreditScoreGauge({
 
         {/* Center score display */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pt-4">
-          <span className={`text-4xl font-bold ${band.color}`}>{score}</span>
+          <span className={`text-4xl font-bold ${band.color}`}>{numericScore}</span>
         </div>
       </div>
 
