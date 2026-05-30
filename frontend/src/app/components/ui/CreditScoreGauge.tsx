@@ -59,9 +59,10 @@ export function CreditScoreGauge({
 }: CreditScoreGaugeProps) {
   const numericScore = typeof score === "number" && Number.isFinite(score) ? score : null;
 
-  const band = useMemo(() => (numericScore == null ? BANDS[0] : getBand(numericScore)), [
-    numericScore,
-  ]);
+  const band = useMemo(
+    () => (numericScore == null ? BANDS[0] : getBand(numericScore)),
+    [numericScore],
+  );
   const delta = previousScore != null && numericScore != null ? numericScore - previousScore : null;
 
   const cx = 120;
