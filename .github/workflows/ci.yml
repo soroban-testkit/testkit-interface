@@ -69,8 +69,23 @@ jobs:
           INTERNAL_API_KEY: test_internal_api_key
           FRONTEND_URL: https://frontend.example.com
 
+  migration-paths:
+    runs-on: ubuntu-latest
+    outputs:
+      migrations: ${{ steps.filter.outputs.migrations }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            migrations:
+              - 'backend/migrations/**'
+              - 'backend/package.json'
+
   migration-check:
-    needs: supply-chain-audit
+    needs: [supply-chain-audit, migration-paths]
+    if: github.event_name == 'push' || needs.migration-paths.outputs.migrations == 'true'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -97,7 +112,22 @@ jobs:
       - name: Install dependencies
         run: npm ci
         working-directory: backend
-      - name: Run full migration set against empty database
+      - name: Migrate up from empty schema
+        run: npm run migrate:up
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://pguser:pgpass@localhost:5432/remitlend_test
+      - name: Migrate all the way down (reversibility check)
+        run: |
+          # Count migrations and roll them all back one by one
+          MIGRATION_COUNT=$(ls migrations/*.js 2>/dev/null | wc -l)
+          for i in $(seq 1 "$MIGRATION_COUNT"); do
+            npm run migrate:down -- --count 1
+          done
+        working-directory: backend
+        env:
+          DATABASE_URL: postgres://pguser:pgpass@localhost:5432/remitlend_test
+      - name: Migrate up again (ordering + idempotency check)
         run: npm run migrate:up
         working-directory: backend
         env:
