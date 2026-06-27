@@ -1,5 +1,8 @@
 "use client";
 
+// This route is intentionally gated from production — it is a development-only
+// component gallery. If accidentally shipped, requests are bounced to 404.
+import { notFound } from "next/navigation";
 import React, { useState } from "react";
 import { Button } from "../../components/ui/Button";
 import { Input } from "../../components/ui/Input";
@@ -12,11 +15,32 @@ import {
   CardFooter,
 } from "../../components/ui/Card";
 import { Modal } from "../../components/ui/Modal";
-import { Search, Mail, Lock, User, Terminal, ChevronRight } from "lucide-react";
+import { Skeleton, SkeletonText, SkeletonCard, SkeletonRow } from "../../components/ui/Skeleton";
+import { EmptyState } from "../../components/ui/EmptyState";
+import { StatusIndicator } from "../../components/ui/StatusIndicator";
+import { LoanStatusBadge } from "../../components/ui/LoanStatusBadge";
+import { Tooltip } from "../../components/ui/Tooltip";
+import { PaginationControls } from "../../components/ui/PaginationControls";
+import { CopyButton } from "../../components/ui/CopyButton";
+import { ThemeToggle } from "../../components/ui/ThemeToggle";
+import {
+  Search,
+  Mail,
+  Lock,
+  User,
+  Terminal,
+  ChevronRight,
+  Inbox,
+  FileQuestion,
+} from "lucide-react";
 
 export default function UIDemoPage() {
+  if (process.env.NODE_ENV === "production") notFound();
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(3);
+  const totalPages = 10;
 
   const handleAction = () => {
     setIsLoading(true);
@@ -26,21 +50,22 @@ export default function UIDemoPage() {
   return (
     <div className="min-h-screen bg-gray-50 p-8 dark:bg-zinc-950">
       <div className="mx-auto max-w-5xl space-y-12">
-        <section className="space-y-4">
-          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-zinc-50">
-            UI Component Library
-          </h1>
+        <section className="space-y-2">
+          <div className="flex items-center justify-between">
+            <h1 className="text-4xl font-extrabold tracking-tight text-gray-900 dark:text-zinc-50">
+              UI Component Library
+            </h1>
+            <ThemeToggle />
+          </div>
           <p className="text-lg text-gray-500 dark:text-zinc-400">
-            A boutique collection of reusable atomic components for RemitLend.
+            Development-only gallery — not shipped to production. Covers all 22 components in{" "}
+            <code className="text-sm">src/app/components/ui/</code>.
           </p>
         </section>
 
         {/* Buttons */}
         <section className="space-y-6">
-          <div className="flex items-center gap-2 text-xl font-semibold text-gray-800 dark:text-zinc-200">
-            <ChevronRight className="text-blue-500" />
-            <h2>Buttons</h2>
-          </div>
+          <SectionHeading>Button</SectionHeading>
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-wrap gap-4">
@@ -66,6 +91,7 @@ export default function UIDemoPage() {
                 <Button rightIcon={<ChevronRight size={16} />} variant="secondary">
                   Next Step
                 </Button>
+                <Button disabled>Disabled</Button>
               </div>
             </CardContent>
           </Card>
@@ -73,10 +99,7 @@ export default function UIDemoPage() {
 
         {/* Inputs */}
         <section className="space-y-6">
-          <div className="flex items-center gap-2 text-xl font-semibold text-gray-800 dark:text-zinc-200">
-            <ChevronRight className="text-blue-500" />
-            <h2>Inputs</h2>
-          </div>
+          <SectionHeading>Input</SectionHeading>
           <Card>
             <CardContent className="space-y-6 pt-6">
               <div className="grid gap-6 md:grid-cols-2">
@@ -107,10 +130,7 @@ export default function UIDemoPage() {
 
         {/* Cards */}
         <section className="space-y-6">
-          <div className="flex items-center gap-2 text-xl font-semibold text-gray-800 dark:text-zinc-200">
-            <ChevronRight className="text-blue-500" />
-            <h2>Cards</h2>
-          </div>
+          <SectionHeading>Card</SectionHeading>
           <div className="grid gap-6 md:grid-cols-2">
             <Card>
               <CardHeader>
@@ -156,22 +176,15 @@ export default function UIDemoPage() {
         </section>
 
         {/* Modals */}
-        <section className="space-y-6 pb-12">
-          <div className="flex items-center gap-2 text-xl font-semibold text-gray-800 dark:text-zinc-200">
-            <ChevronRight className="text-blue-500" />
-            <h2>Modals</h2>
-          </div>
+        <section className="space-y-6">
+          <SectionHeading>Modal</SectionHeading>
           <Card>
             <CardContent className="flex h-40 flex-col items-center justify-center pt-6">
               <p className="mb-4 text-sm text-gray-500">
-                Portals and focus locking verified via hooks.
+                Focus-trapped, animated, keyboard-dismissible.
               </p>
-              <Button onClick={() => setIsModalOpen(true)}>Open Demonstration Modal</Button>
-              <Modal
-                isOpen={isModalOpen}
-                onClose={() => setIsModalOpen(false)}
-                title="Privacy Settings"
-              >
+              <Button onClick={() => setIsModalOpen(true)}>Open Demo Modal</Button>
+              <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Privacy Settings">
                 <div className="space-y-4">
                   <p className="text-sm text-gray-500 dark:text-zinc-400">
                     Are you sure you want to update your privacy settings? This will affect how your
@@ -188,7 +201,161 @@ export default function UIDemoPage() {
             </CardContent>
           </Card>
         </section>
+
+        {/* Skeleton */}
+        <section className="space-y-6">
+          <SectionHeading>Skeleton</SectionHeading>
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">SkeletonCard</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SkeletonCard />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">SkeletonRow × 3</CardTitle>
+              </CardHeader>
+              <CardContent className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                <SkeletonRow />
+                <SkeletonRow />
+                <SkeletonRow />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">SkeletonText</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SkeletonText lines={4} />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Skeleton (raw)</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Skeleton className="h-4 w-3/4" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-10 w-32 rounded-lg" />
+                <Skeleton className="h-10 w-10 rounded-full" />
+              </CardContent>
+            </Card>
+          </div>
+        </section>
+
+        {/* EmptyState */}
+        <section className="space-y-6">
+          <SectionHeading>EmptyState</SectionHeading>
+          <div className="grid gap-6 md:grid-cols-2">
+            <EmptyState
+              icon={Inbox}
+              title="No notifications"
+              description="You're all caught up. New notifications will appear here."
+            />
+            <EmptyState
+              icon={FileQuestion}
+              title="No results found"
+              description="Try adjusting your search or filter criteria to find what you're looking for."
+              actionLabel="Clear filters"
+              onAction={() => {}}
+            />
+          </div>
+        </section>
+
+        {/* StatusIndicator + LoanStatusBadge */}
+        <section className="space-y-6">
+          <SectionHeading>StatusIndicator &amp; LoanStatusBadge</SectionHeading>
+          <Card>
+            <CardContent className="space-y-6 pt-6">
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  StatusIndicator tones
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <StatusIndicator label="Success" tone="success" />
+                  <StatusIndicator label="Danger" tone="danger" />
+                  <StatusIndicator label="Warning" tone="warning" />
+                  <StatusIndicator label="Info" tone="info" />
+                  <StatusIndicator label="Neutral" tone="neutral" />
+                </div>
+              </div>
+              <div>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-zinc-500">
+                  LoanStatusBadge statuses
+                </p>
+                <div className="flex flex-wrap gap-3">
+                  <LoanStatusBadge status="active" />
+                  <LoanStatusBadge status="pending" />
+                  <LoanStatusBadge status="repaid" />
+                  <LoanStatusBadge status="defaulted" />
+                  <LoanStatusBadge status="liquidated" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* Tooltip */}
+        <section className="space-y-6">
+          <SectionHeading>Tooltip</SectionHeading>
+          <Card>
+            <CardContent className="flex items-center gap-4 pt-6">
+              <span className="text-sm text-zinc-700 dark:text-zinc-300">Credit score</span>
+              <Tooltip content="Your credit score is calculated from your on-chain remittance history over the past 12 months." />
+              <span className="text-sm text-zinc-700 dark:text-zinc-300">Interest rate</span>
+              <Tooltip
+                content="Variable rate tied to the pool utilisation ratio. Updated every epoch."
+                label="Interest rate info"
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* PaginationControls */}
+        <section className="space-y-6">
+          <SectionHeading>PaginationControls</SectionHeading>
+          <Card>
+            <CardContent className="pt-6">
+              <PaginationControls
+                currentPage={currentPage}
+                totalPages={totalPages}
+                hasPrevious={currentPage > 1}
+                hasNext={currentPage < totalPages}
+                onPageChange={setCurrentPage}
+                onPrevious={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                onNext={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                summary={`Page ${currentPage} of ${totalPages}`}
+              />
+            </CardContent>
+          </Card>
+        </section>
+
+        {/* CopyButton */}
+        <section className="space-y-6 pb-12">
+          <SectionHeading>CopyButton</SectionHeading>
+          <Card>
+            <CardContent className="flex items-center gap-3 pt-6">
+              <code className="rounded bg-zinc-100 px-3 py-1.5 font-mono text-sm dark:bg-zinc-900">
+                GBDNQ...XKJA
+              </code>
+              <CopyButton value="GBDNQP7PQUXFZ4MGASIWMZZMTEVXKJA" />
+              <span className="text-xs text-zinc-400">Click the icon to copy</span>
+            </CardContent>
+          </Card>
+        </section>
       </div>
+    </div>
+  );
+}
+
+function SectionHeading({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex items-center gap-2 text-xl font-semibold text-gray-800 dark:text-zinc-200">
+      <ChevronRight className="text-blue-500" />
+      <h2>{children}</h2>
     </div>
   );
 }
