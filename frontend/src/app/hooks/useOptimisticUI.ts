@@ -236,7 +236,11 @@ export function useTransaction(id: string) {
     sign: (message?: string) => store.signTransaction(id, message),
     fail: (error: string) => store.failTransaction(id, error),
     clear: () => store.clearTransaction(id),
-    isLoading: transaction?.status === "pending" || transaction?.status === "signing",
+    isLoading:
+      transaction?.status === "pending" ||
+      transaction?.status === "signing" ||
+      transaction?.status === "submitted" ||
+      transaction?.status === "confirming",
     isSigning: transaction?.status === "signing",
     isSubmitted: transaction?.status === "submitted",
     isConfirming: transaction?.status === "confirming",

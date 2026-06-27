@@ -20,7 +20,7 @@
  * ```
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTransaction } from "./useOptimisticUI";
 import { useWallet } from "../components/providers/WalletProvider";
@@ -47,7 +47,8 @@ export function useRepaymentOperation(options?: {
   onError?: (error: Error) => void;
 }) {
   const queryClient = useQueryClient();
-  const transactionId = `repayment-${Date.now()}`;
+  const uid = useId();
+  const transactionId = `repayment-${uid}`;
   const transaction = useTransaction(transactionId);
   const [error, setError] = useState<string | null>(null);
 
@@ -126,7 +127,8 @@ export function useDepositOperation(options?: {
   const buildDeposit = useDepositToPool();
   const { data: poolStats } = usePoolStats();
 
-  const transactionId = `deposit-${Date.now()}`;
+  const uid = useId();
+  const transactionId = `deposit-${uid}`;
   const transaction = useTransaction(transactionId);
   const [error, setError] = useState<string | null>(null);
 
@@ -217,7 +219,8 @@ export function useWithdrawalOperation(options?: {
   const buildWithdraw = useWithdrawFromPool();
   const { data: poolStats } = usePoolStats();
 
-  const transactionId = `withdrawal-${Date.now()}`;
+  const uid = useId();
+  const transactionId = `withdrawal-${uid}`;
   const transaction = useTransaction(transactionId);
   const [error, setError] = useState<string | null>(null);
 
