@@ -164,16 +164,9 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
               onChange={(e) => handleAddressChange(e.target.value)}
               disabled={mutation.isPending}
               required
-              className={errors.recipientAddress ? "border-red-600" : ""}
+              error={errors.recipientAddress || undefined}
               helperText="Enter the recipient's Stellar public key (56 characters starting with G)"
             />
-
-            {errors.recipientAddress && (
-              <div className="mt-1 flex items-start gap-2 text-sm text-red-600">
-                <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                <span>{errors.recipientAddress}</span>
-              </div>
-            )}
 
             {/* Token Selection */}
             <div className="space-y-2">
@@ -229,9 +222,8 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
                 disabled={mutation.isPending}
                 maxLength={28}
                 rows={2}
-                className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-indigo-600 dark:focus:ring-indigo-400 resize-none dark:border-zinc-700 ${
-                  errors.memo ? "border-red-600" : "border-zinc-300"
-                }`}
+                className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-indigo-600 dark:focus:ring-indigo-400 resize-none dark:border-zinc-700 ${errors.memo ? "border-red-600" : "border-zinc-300"
+                  }`}
               />
               {errors.memo && (
                 <div className="flex items-start gap-2 text-sm text-red-600">
