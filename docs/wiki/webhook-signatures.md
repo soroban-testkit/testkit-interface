@@ -33,10 +33,11 @@ function verifySignature(secret, rawBody, signatureHeader) {
   return crypto.timingSafeEqual(a, b);
 }
 
-// Express example
+// Express example — YOUR_SUBSCRIPTION_SECRET is the per-subscription
+// secret returned when you registered the webhook, not an env var.
 app.post("/webhook", express.raw({ type: "application/json" }), (req, res) => {
   const sig = req.headers["x-remitlend-signature"];
-  if (!verifySignature(process.env.WEBHOOK_SECRET, req.body, sig)) {
+  if (!verifySignature(YOUR_SUBSCRIPTION_SECRET, req.body, sig)) {
     return res.status(401).send("Invalid signature");
   }
   // process req.body …
