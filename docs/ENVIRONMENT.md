@@ -49,6 +49,10 @@ This document lists every environment variable used by the RemitLend platform. E
 | `SCORE_RECONCILIATION_AUTOCORRECT_THRESHOLD` | ✓ | ✓ | ✓ | `50` | Max points auto-corrected per run | `backend/src/config/scores.ts` |
 | `JWT_SECRET` | ✓ | ✓ | ✓ | `your-super-secret-jwt-key-change-in-production` | JWT signing/verification secret | `backend/src/middleware/jwtAuth.ts` |
 | `INTERNAL_API_KEY` | ✓ | ✓ | ✓ | `change-me` | API key for internal endpoints | `backend/src/middleware/auth.ts` |
+| `ADMIN_WALLETS` | ✓ | ✓ | ✓ | — | Comma-separated Stellar public keys granted the `admin` role (`admin:all` scope). **Security-critical**: any wallet listed here receives full admin privileges. Unlisted wallets default to `borrower`. | `backend/src/auth/rbac.ts` |
+| `LENDER_WALLETS` | ✓ | ✓ | ✓ | — | Comma-separated Stellar public keys granted the `lender` role (`read:loans`, `read:pool` scopes). Unlisted wallets default to `borrower`. | `backend/src/auth/rbac.ts` |
+| `EXPOSE_STACK_TRACES` | — | — | — | `false` | When `"true"`, include stack traces in error responses. **Never enable in production.** | `backend/src/middleware/errorHandler.ts` |
+| `JWT_COOKIE_NAME` | ✓ | ✓ | ✓ | `remitlend_jwt` | Name of the HTTP cookie used to transport the JWT token | `backend/src/middleware/jwtAuth.ts` |
 | `WEBHOOK_REQUEST_TIMEOUT_MS` | ✓ | ✓ | ✓ | `30000` | Outgoing webhook request timeout | `backend/src/services/webhookService.ts` |
 | `SENTRY_DSN` | — | ✓ | ✓ | — | Sentry DSN for backend error tracking | `backend/src/app.ts` |
 | `NOTIFICATION_RETENTION_DAYS` | ✓ | ✓ | ✓ | `90` | Days to keep unread notifications | `backend/src/services/notificationService.ts` |

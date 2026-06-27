@@ -232,15 +232,15 @@ While deactivated:
 ## Verifying HMAC Signatures
 
 Each delivery includes an `X-RemitLend-Signature` header containing an
-HMAC-SHA256 signature of the raw request body.
+HMAC-SHA256 signature of the **raw request body**.
 
 **Header format:**
 ```
-X-RemitLend-Signature: t=1745827200,v1=abc123def456...
+X-RemitLend-Signature: sha256=<hex-encoded-hmac>
 ```
 
-- `t` — Unix timestamp of when the signature was generated
-- `v1` — Hexadecimal HMAC-SHA256 digest
+The value is `sha256=` followed by the lowercase hex-encoded HMAC-SHA256
+digest computed over the raw request body (no timestamp prefix).
 
 ### Verification snippet (Node.js)
 
@@ -248,23 +248,18 @@ X-RemitLend-Signature: t=1745827200,v1=abc123def456...
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 function verifyWebhookSignature(
-  body: string,
+  rawBody: string,
   signatureHeader: string,
   secret: string,
 ): boolean {
-  const parts = signatureHeader.split(",");
-  const timestamp = parts.find((p) => p.startsWith("t="))?.slice(2);
-  const digest = parts.find((p) => p.startsWith("v1="))?.slice(3);
+  const expected =
+    "sha256=" +
+    createHmac("sha256", secret).update(rawBody).digest("hex");
 
-  if (!timestamp || !digest) return false;
-
-  const payload = `${timestamp}.${body}`;
-  const expected = createHmac("sha256", secret)
-    .update(payload)
-    .digest("hex");
-
-  if (expected.length !== digest.length) return false;
-  return timingSafeEqual(Buffer.from(expected), Buffer.from(digest));
+  const a = Buffer.from(expected);
+  const b = Buffer.from(signatureHeader ?? "");
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
 }
 ```
 
@@ -274,9 +269,14 @@ function verifyWebhookSignature(
 
 ### Obtaining your secret
 
-The signing secret is the `WEBHOOK_SIGNING_SECRET` environment variable
-configured on the RemitLend server. Contact the RemitLend team to obtain
-your shared secret.
+The signing secret is the **per-subscription secret** returned in the
+response when you register the webhook subscription (see
+[Creating a Subscription](#creating-a-subscription)). It is **not** a
+global environment variable. Store it securely on your server and use it
+to verify each incoming delivery.
+
+See also: [docs/wiki/webhook-signatures.md](wiki/webhook-signatures.md)
+for additional language examples.
 
 ---
 
