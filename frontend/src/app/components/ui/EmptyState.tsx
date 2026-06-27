@@ -3,12 +3,7 @@
 import type { ElementType, ReactNode } from "react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
-
-function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+import { cn } from "@/app/utils/cn";
 
 interface EmptyStateProps {
   icon: ElementType<{ className?: string }>;
