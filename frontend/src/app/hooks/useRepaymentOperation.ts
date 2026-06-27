@@ -23,6 +23,7 @@
 import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTransaction } from "./useOptimisticUI";
+import { queryKeys, type PoolStats, type DepositorPortfolio } from "./useApi";
 
 interface RepaymentOperationOptions {
   loanId: number;
@@ -130,6 +131,25 @@ export function useDepositOperation(options?: {
       transaction.start("Processing deposit...");
       setError(null);
 
+      // Save previous state for rollback
+      const previousPoolStats = queryClient.getQueryData(queryKeys.pool.stats());
+      const previousDepositor = queryClient.getQueryData(
+        queryKeys.pool.depositor(depositorAddress),
+      );
+
+      // Optimistically update cache before signing/submission
+      queryClient.setQueryData(queryKeys.pool.stats(), (old: PoolStats | undefined) => {
+        if (!old) return old;
+        return { ...old, totalDeposits: old.totalDeposits + amount };
+      });
+      queryClient.setQueryData(
+        queryKeys.pool.depositor(depositorAddress),
+        (old: DepositorPortfolio | undefined) => {
+          if (!old) return old;
+          return { ...old, depositAmount: old.depositAmount + amount };
+        },
+      );
+
       try {
         transaction.updateProgress(25);
         await new Promise((resolve) => setTimeout(resolve, 300));
@@ -147,16 +167,24 @@ export function useDepositOperation(options?: {
         transaction.complete(txHash);
 
         queryClient.invalidateQueries({
-          queryKey: ["pool", "stats"],
+          queryKey: queryKeys.pool.stats(),
         });
         queryClient.invalidateQueries({
-          queryKey: ["pool", "depositor", depositorAddress],
+          queryKey: queryKeys.pool.depositor(depositorAddress),
         });
 
         const result = { txHash };
         options?.onSuccess?.(result);
         return result;
       } catch (err) {
+        // Rollback optimistic updates on signing/submission failure
+        if (previousPoolStats !== undefined) {
+          queryClient.setQueryData(queryKeys.pool.stats(), previousPoolStats);
+        }
+        if (previousDepositor !== undefined) {
+          queryClient.setQueryData(queryKeys.pool.depositor(depositorAddress), previousDepositor);
+        }
+
         const errorMessage = err instanceof Error ? err.message : "Deposit failed";
         transaction.fail(errorMessage);
         setError(errorMessage);
@@ -198,6 +226,25 @@ export function useWithdrawalOperation(options?: {
       transaction.start("Processing withdrawal...");
       setError(null);
 
+      // Save previous state for rollback
+      const previousPoolStats = queryClient.getQueryData(queryKeys.pool.stats());
+      const previousDepositor = queryClient.getQueryData(
+        queryKeys.pool.depositor(depositorAddress),
+      );
+
+      // Optimistically update cache before signing/submission
+      queryClient.setQueryData(queryKeys.pool.stats(), (old: PoolStats | undefined) => {
+        if (!old) return old;
+        return { ...old, totalDeposits: Math.max(0, old.totalDeposits - amount) };
+      });
+      queryClient.setQueryData(
+        queryKeys.pool.depositor(depositorAddress),
+        (old: DepositorPortfolio | undefined) => {
+          if (!old) return old;
+          return { ...old, depositAmount: Math.max(0, old.depositAmount - amount) };
+        },
+      );
+
       try {
         transaction.updateProgress(25);
         await new Promise((resolve) => setTimeout(resolve, 300));
@@ -215,16 +262,24 @@ export function useWithdrawalOperation(options?: {
         transaction.complete(txHash);
 
         queryClient.invalidateQueries({
-          queryKey: ["pool", "stats"],
+          queryKey: queryKeys.pool.stats(),
         });
         queryClient.invalidateQueries({
-          queryKey: ["pool", "depositor", depositorAddress],
+          queryKey: queryKeys.pool.depositor(depositorAddress),
         });
 
         const result = { txHash };
         options?.onSuccess?.(result);
         return result;
       } catch (err) {
+        // Rollback optimistic updates on signing/submission failure
+        if (previousPoolStats !== undefined) {
+          queryClient.setQueryData(queryKeys.pool.stats(), previousPoolStats);
+        }
+        if (previousDepositor !== undefined) {
+          queryClient.setQueryData(queryKeys.pool.depositor(depositorAddress), previousDepositor);
+        }
+
         const errorMessage = err instanceof Error ? err.message : "Withdrawal failed";
         transaction.fail(errorMessage);
         setError(errorMessage);
