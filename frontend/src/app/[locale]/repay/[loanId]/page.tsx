@@ -21,7 +21,6 @@ import {
 import { useContractToast } from "../../../hooks/useContractToast";
 import { TransactionPreviewModal } from "../../../components/transaction/TransactionPreviewModal";
 import { useTransactionPreview } from "../../../hooks/useTransactionPreview";
-import { buildUnsignedRepaymentXdr } from "../../../utils/soroban";
 import {
   buildAmountHelperText,
   getPrecisionError,
@@ -86,6 +85,7 @@ export default function RepayLoanPage() {
         throw new Error("Contract configuration missing");
       }
 
+      const { buildUnsignedRepaymentXdr } = await import("../../../utils/soroban");
       const xdr = await buildUnsignedRepaymentXdr({
         borrower: walletAddress,
         loanId,
