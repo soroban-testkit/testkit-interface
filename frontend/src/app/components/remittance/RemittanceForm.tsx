@@ -157,14 +157,14 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
           </CardHeader>
           <CardContent className="space-y-6">
             <Input
-              id="recipientAddress",
-              label="Recipient Address",
-              placeholder="G... (Stellar public key)",
-              value={recipientAddress},
+              id="recipientAddress"
+              label="Recipient Address"
+              placeholder="G... (Stellar public key)"
+              value={recipientAddress}
               onChange={(e) => handleAddressChange(e.target.value)}
               disabled={mutation.isPending}
               required
-              className={errors.recipientAddress ? "border-red-600" : ""}
+              error={errors.recipientAddress || undefined}
               helperText="Enter the recipient's Stellar public key (56 characters starting with G)"
             />
 
