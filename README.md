@@ -225,9 +225,9 @@ See [docs/ENVIRONMENT.md](docs/ENVIRONMENT.md) for a full reference of all envir
 ### Quick Contribution Guide
 
 1. Fork the repository.
-2. Create a feature branch (`git checkout -b feature/amazing-feature`).
-3. Make your changes and commit (`git commit -m 'Add amazing feature'`).
-4. Push to your branch (`git push origin feature/amazing-feature`).
+2. Create a feature branch (`git checkout -b feat/amazing-feature`).
+3. Make your changes and commit using [Conventional Commits](https://www.conventionalcommits.org/) (`git commit -m 'feat: add amazing feature'`).
+4. Push to your branch (`git push origin feat/amazing-feature`).
 5. Open a Pull Request.
 
 ## 📄 License
