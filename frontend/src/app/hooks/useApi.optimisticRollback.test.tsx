@@ -125,9 +125,7 @@ describe("useRepayLoan optimistic rollback", () => {
     result.current.mutate({ loanId: LOAN_ID, amount: 100, borrowerAddress: BORROWER });
 
     await waitFor(() => {
-      const cached = queryClient.getQueryData<LoanDetails>(
-        queryKeys.loans.detail(String(LOAN_ID)),
-      );
+      const cached = queryClient.getQueryData<LoanDetails>(queryKeys.loans.detail(String(LOAN_ID)));
       expect(cached?.totalOwed).toBe(750);
       expect(cached?.totalRepaid).toBe(300);
       expect(cached?.status).toBe("active");
@@ -144,9 +142,7 @@ describe("useRepayLoan optimistic rollback", () => {
     result.current.mutate({ loanId: LOAN_ID, amount: 850, borrowerAddress: BORROWER });
 
     await waitFor(() => {
-      const cached = queryClient.getQueryData<LoanDetails>(
-        queryKeys.loans.detail(String(LOAN_ID)),
-      );
+      const cached = queryClient.getQueryData<LoanDetails>(queryKeys.loans.detail(String(LOAN_ID)));
       expect(cached?.totalOwed).toBe(0);
       expect(cached?.totalRepaid).toBe(1050);
       expect(cached?.status).toBe("repaid");
@@ -164,9 +160,7 @@ describe("useRepayLoan optimistic rollback", () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
 
-    expect(queryClient.getQueryData(queryKeys.loans.detail(String(LOAN_ID)))).toEqual(
-      loanDetail,
-    );
+    expect(queryClient.getQueryData(queryKeys.loans.detail(String(LOAN_ID)))).toEqual(loanDetail);
     expect(queryClient.getQueryData(queryKeys.borrowerLoans.byAddress(BORROWER))).toEqual(
       borrowerLoans,
     );
