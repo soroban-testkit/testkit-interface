@@ -20,6 +20,7 @@ import {
   formatAmountOnBlur,
   getAssetDecimals,
 } from "../../utils/amount";
+import { formatCurrency } from "./loanFormatters";
 
 interface LoanRepaymentFormProps {
   loanId: number;
@@ -82,7 +83,7 @@ export function LoanRepaymentForm({ loanId, totalOwed, minPayment = 0 }: LoanRep
     }
 
     if (minPayment > 0 && numAmount < minPayment) {
-      setError(`Minimum payment is ${minPayment} USDC`);
+      setError(`Minimum payment is ${formatCurrency(minPayment).replace("$", "")} USDC`);
       return false;
     }
 
@@ -130,7 +131,7 @@ export function LoanRepaymentForm({ loanId, totalOwed, minPayment = 0 }: LoanRep
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-gray-600 dark:text-zinc-400">Total Owed</span>
               <span className="text-2xl font-bold text-gray-900 dark:text-zinc-100">
-                {totalOwed} USDC
+                {formatCurrency(totalOwed).replace("$", "")} USDC
               </span>
             </div>
             {minPayment > 0 && (
@@ -163,7 +164,7 @@ export function LoanRepaymentForm({ loanId, totalOwed, minPayment = 0 }: LoanRep
             />
 
             <Button variant="ghost" size="sm" onClick={handlePayFullAmount} className="w-full">
-              Pay Full Amount ({totalOwed} USDC)
+              Pay Full Amount ({formatCurrency(totalOwed).replace("$", "")} USDC)
             </Button>
           </div>
 
