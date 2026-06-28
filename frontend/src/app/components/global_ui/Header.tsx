@@ -13,9 +13,11 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import { ThemeToggle } from "../ui/ThemeToggle";
 import { NotificationDropdown } from "./NotificationDropdown";
+import { RecentTransactionsDrawer } from "../transaction/RecentTransactionsDrawer";
 import { useWalletStore } from "../../stores/useWalletStore";
 import { useUserStore } from "../../stores/useUserStore";
 import { useGamificationStore } from "../../stores/useGamificationStore";
+import { useWallet } from "../providers/WalletProvider";
 import { useLoans, useRemittances } from "../../hooks/useApi";
 import { useContractToast } from "../../hooks/useContractToast";
 import { LanguageSwitcher } from "./LanguageSwitcher";
@@ -44,8 +46,7 @@ export function Header({ onMenuClick, className }: HeaderProps) {
   const t = useTranslations("Navigation");
   const isConnected = useWalletStore((state) => state.status === "connected");
   const walletAddress = useWalletStore((state) => state.address);
-  const setConnected = useWalletStore((state) => state.setConnected);
-  const disconnect = useWalletStore((state) => state.disconnect);
+  const { connectWallet, disconnectWallet } = useWallet();
   const user = useUserStore((state) => state.user);
   const gamificationStore = useGamificationStore();
   const toast = useContractToast();
@@ -63,11 +64,9 @@ export function Header({ onMenuClick, className }: HeaderProps) {
     () => [
       { name: t("dashboard"), href: `/${locale}` },
       { name: t("loans"), href: `/${locale}/loans` },
-      { name: "Remittances", href: `/${locale}/remittances` },
       { name: "Lend", href: `/${locale}/lend` },
       { name: "Analytics", href: `/${locale}/analytics` },
       { name: "Wallet", href: `/${locale}/wallet` },
-      { name: "Settings", href: `/${locale}/settings` },
     ],
     [locale, t],
   );
@@ -143,7 +142,7 @@ export function Header({ onMenuClick, className }: HeaderProps) {
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       setDebouncedQuery(query);
-    }, 250);
+    }, 300);
 
     return () => window.clearTimeout(timeout);
   }, [query]);
@@ -218,14 +217,22 @@ export function Header({ onMenuClick, className }: HeaderProps) {
     }
   };
 
-  const handleWalletToggle = () => {
+  const handleWalletToggle = async () => {
     if (isConnected) {
-      disconnect();
+      disconnectWallet();
       toast.info("Wallet disconnected", "Reconnect anytime to continue borrowing and lending.");
-    } else {
-      setConnected("0x123...abc", { chainId: 1, name: "Stellar", isSupported: true });
+      return;
+    }
+
+    try {
+      await connectWallet();
       gamificationStore.addXP(10, "Wallet connection");
       toast.success("Wallet connected");
+    } catch (error) {
+      toast.error(
+        "Wallet connection failed",
+        error instanceof Error ? error.message : "Unable to connect to Freighter.",
+      );
     }
   };
 
@@ -354,7 +361,7 @@ export function Header({ onMenuClick, className }: HeaderProps) {
           className="hidden sm:flex items-center gap-2 rounded-full bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 transition-all shadow-sm shadow-indigo-500/20"
         >
           <Wallet className="h-4 w-4" aria-hidden="true" />
-          {isConnected ? "Disconnect" : "Connect Wallet"}
+          {isConnected && walletAddress ? truncateWalletAddress(walletAddress) : "Connect Wallet"}
         </button>
 
         <button
@@ -369,6 +376,8 @@ export function Header({ onMenuClick, className }: HeaderProps) {
         <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800 hidden sm:block" />
 
         <ThemeToggle />
+
+        <RecentTransactionsDrawer />
 
         <NotificationDropdown />
 

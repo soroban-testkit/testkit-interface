@@ -10,7 +10,16 @@ import { formatRemittanceSend } from "../../utils/transactionFormatter";
 import { isValidStellarAddress } from "../../utils/stellar";
 import { AlertCircle, Send, Loader } from "lucide-react";
 import { useCreateRemittance } from "../../hooks/useApi";
+import { truncateDecimals, getAssetPrecision } from "../../utils/precision";
 import { toast } from "sonner";
+import {
+  buildAmountHelperText,
+  getPrecisionError,
+  parseAmount,
+  sanitizeAmountInput,
+  formatAmountOnBlur,
+  getAssetDecimals,
+} from "../../utils/amount";
 
 interface RemittanceFormProps {
   onSuccess?: () => void;
@@ -25,6 +34,9 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
 
   const txPreview = useTransactionPreview();
   const mutation = useCreateRemittance();
+  const decimals = getAssetDecimals(token);
+  const precisionError = getPrecisionError(amount, token);
+  const helperText = buildAmountHelperText(amount, token, decimals);
 
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -39,9 +51,11 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
     if (!amount) {
       newErrors.amount = "Amount is required";
     } else {
-      const numAmount = parseFloat(amount);
+      const numAmount = parseAmount(amount);
       if (isNaN(numAmount) || numAmount <= 0) {
         newErrors.amount = "Amount must be greater than 0";
+      } else if (precisionError) {
+        newErrors.amount = precisionError;
       }
     }
 
@@ -61,9 +75,16 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
   };
 
   const handleAmountChange = (value: string) => {
-    setAmount(value);
+    setAmount(sanitizeAmountInput(value));
     if (errors.amount) {
       setErrors({ ...errors, amount: "" });
+    }
+  };
+
+  const handleAmountBlur = (value: string) => {
+    const formatted = formatAmountOnBlur(value, token);
+    if (formatted && formatted !== value) {
+      setAmount(formatted);
     }
   };
 
@@ -82,7 +103,7 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
       return;
     }
 
-    const numAmount = parseFloat(amount);
+    const numAmount = parseAmount(amount);
 
     const previewData = formatRemittanceSend({
       amount: numAmount,
@@ -135,28 +156,17 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Recipient Address */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                Recipient Address <span className="text-red-600">*</span>
-              </label>
-              <Input
-                placeholder="G... (Stellar public key)"
-                value={recipientAddress}
-                onChange={(e) => handleAddressChange(e.target.value)}
-                disabled={mutation.isPending}
-                className={errors.recipientAddress ? "border-red-600" : ""}
-              />
-              {errors.recipientAddress && (
-                <div className="flex items-start gap-2 text-sm text-red-600">
-                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <span>{errors.recipientAddress}</span>
-                </div>
-              )}
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Enter the recipient&apos;s Stellar public key (56 characters starting with G)
-              </p>
-            </div>
+            <Input
+              id="recipientAddress"
+              label="Recipient Address"
+              placeholder="G... (Stellar public key)"
+              value={recipientAddress}
+              onChange={(e) => handleAddressChange(e.target.value)}
+              disabled={mutation.isPending}
+              required
+              error={errors.recipientAddress || undefined}
+              helperText="Enter the recipient's Stellar public key (56 characters starting with G)"
+            />
 
             {/* Token Selection */}
             <div className="space-y-2">
@@ -178,28 +188,27 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
               </p>
             </div>
 
-            {/* Amount */}
-            <div className="space-y-2">
-              <label className="block text-sm font-semibold text-zinc-900 dark:text-zinc-50">
-                Amount <span className="text-red-600">*</span>
-              </label>
-              <Input
-                type="number"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => handleAmountChange(e.target.value)}
-                disabled={mutation.isPending}
-                min="0"
-                step="0.01"
-                className={errors.amount ? "border-red-600" : ""}
-              />
-              {errors.amount && (
-                <div className="flex items-start gap-2 text-sm text-red-600">
-                  <AlertCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                  <span>{errors.amount}</span>
-                </div>
-              )}
-            </div>
+            <Input
+              id="amount"
+              label="Amount"
+              type="text"
+              inputMode="decimal"
+              placeholder="0.00"
+              step={Math.pow(10, -decimals)}
+              value={amount}
+              onChange={(e) => handleAmountChange(e.target.value)}
+              onBlur={(e) => handleAmountBlur(e.target.value)}
+              disabled={mutation.isPending}
+              required
+              min="0"
+              error={errors.amount || undefined}
+              helperText={helperText ?? `Up to ${decimals} decimal places supported.`}
+              className={errors.amount ? "border-red-600" : ""}
+            />
+
+            <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-2">
+              <span className="text-red-600">*</span> Required field
+            </p>
 
             {/* Memo (Optional) */}
             <div className="space-y-2">
@@ -247,14 +256,14 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
             <div className="flex gap-3 pt-4">
               <Button
                 onClick={handleReviewTransaction}
-                disabled={mutation.isPending || !recipientAddress || !amount}
+                disabled={mutation.isPending || !recipientAddress || !amount || !!precisionError}
                 className="flex-1"
               >
                 {mutation.isPending ? (
-                  <>
+                  <div role="status" className="flex items-center">
                     <Loader className="h-4 w-4 mr-2 animate-spin" />
                     Processing...
-                  </>
+                  </div>
                 ) : (
                   <>
                     <Send className="h-4 w-4 mr-2" />

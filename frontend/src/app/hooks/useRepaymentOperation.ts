@@ -20,10 +20,17 @@
  * ```
  */
 
-import { useCallback, useState } from "react";
+import { useCallback, useId, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useTransaction } from "./useOptimisticUI";
-import { queryKeys, type PoolStats, type DepositorPortfolio } from "./useApi";
+import { useWallet } from "../components/providers/WalletProvider";
+import {
+  useDepositToPool,
+  usePoolStats,
+  useWithdrawFromPool,
+  submitPoolTransaction,
+  queryKeys,
+} from "./useApi";
 
 interface RepaymentOperationOptions {
   loanId: number;
@@ -41,7 +48,8 @@ export function useRepaymentOperation(options?: {
   onError?: (error: Error) => void;
 }) {
   const queryClient = useQueryClient();
-  const transactionId = `repayment-${Date.now()}`;
+  const uid = useId();
+  const transactionId = `repayment-${uid}`;
   const transaction = useTransaction(transactionId);
   const [error, setError] = useState<string | null>(null);
 
@@ -55,24 +63,24 @@ export function useRepaymentOperation(options?: {
       setError(null);
 
       try {
-        // Step 1: Simulate building unsigned transaction
-        transaction.updateProgress(25);
+        // Step 1: Build unsigned transaction
+        transaction.updateProgress(20, "Building transaction...");
         await new Promise((resolve) => setTimeout(resolve, 300));
 
-        // Step 2: Simulate transaction signing
-        transaction.updateProgress(50);
+        // Step 2: Sign transaction (new signing state)
+        transaction.sign("Waiting for wallet signature...");
+        await new Promise((resolve) => setTimeout(resolve, 500));
+
+        // Step 3: Submit to network (new submitted state)
+        const txHash = `tx_${Date.now()}`;
+        transaction.submit(txHash, "Transaction submitted, waiting for confirmation...");
         await new Promise((resolve) => setTimeout(resolve, 300));
 
-        // Step 3: Simulate submission to network
-        transaction.updateProgress(75);
-        await new Promise((resolve) => setTimeout(resolve, 300));
-
-        // Step 4: Simulate network confirmation
-        transaction.updateProgress(95);
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        // Step 4: Poll for confirmation (new confirming state)
+        transaction.confirm("Confirming transaction...");
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
         // Mark complete
-        const txHash = `tx_${Date.now()}`;
         transaction.complete(txHash);
 
         // Invalidate related queries
@@ -116,7 +124,12 @@ export function useDepositOperation(options?: {
   onError?: (error: Error) => void;
 }) {
   const queryClient = useQueryClient();
-  const transactionId = `deposit-${Date.now()}`;
+  const { signTransaction } = useWallet();
+  const buildDeposit = useDepositToPool();
+  const { data: poolStats } = usePoolStats();
+
+  const uid = useId();
+  const transactionId = `deposit-${uid}`;
   const transaction = useTransaction(transactionId);
   const [error, setError] = useState<string | null>(null);
 
@@ -131,40 +144,40 @@ export function useDepositOperation(options?: {
       transaction.start("Processing deposit...");
       setError(null);
 
-      // Save previous state for rollback
-      const previousPoolStats = queryClient.getQueryData(queryKeys.pool.stats());
-      const previousDepositor = queryClient.getQueryData(
-        queryKeys.pool.depositor(depositorAddress),
-      );
-
-      // Optimistically update cache before signing/submission
-      queryClient.setQueryData(queryKeys.pool.stats(), (old: PoolStats | undefined) => {
-        if (!old) return old;
-        return { ...old, totalDeposits: old.totalDeposits + amount };
-      });
-      queryClient.setQueryData(
-        queryKeys.pool.depositor(depositorAddress),
-        (old: DepositorPortfolio | undefined) => {
-          if (!old) return old;
-          return { ...old, depositAmount: old.depositAmount + amount };
-        },
-      );
-
       try {
-        transaction.updateProgress(25);
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        const token = poolStats?.poolTokenAddress;
+        if (!token) {
+          throw new Error("Pool token address not found. Please wait for stats to load.");
+        }
 
-        transaction.updateProgress(50);
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        // Step 1: Build unsigned transaction
+        transaction.updateProgress(20, "Building transaction...");
+        const buildResult = await buildDeposit.mutateAsync({
+          amount,
+          depositorAddress,
+          token,
+        });
 
-        transaction.updateProgress(75);
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        // Step 2: Sign transaction (new signing state)
+        transaction.sign("Waiting for wallet signature...");
+        const signedTxXdr = await signTransaction(buildResult.unsignedTxXdr);
 
-        transaction.updateProgress(95);
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        // Step 3: Submit to network (new submitted state)
+        const submitResult = await submitPoolTransaction(signedTxXdr);
+        transaction.submit(
+          submitResult.txHash,
+          "Transaction submitted, waiting for confirmation...",
+        );
 
-        const txHash = `tx_${Date.now()}`;
-        transaction.complete(txHash);
+        // Step 4: Poll for confirmation (new confirming state)
+        transaction.confirm("Confirming transaction...");
+
+        // Simulate confirmation polling (in real implementation, poll the RPC)
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Mark complete
+        const txHash = submitResult.txHash;
+        transaction.complete(txHash, "Deposit successful!");
 
         queryClient.invalidateQueries({
           queryKey: queryKeys.pool.stats(),
@@ -177,14 +190,6 @@ export function useDepositOperation(options?: {
         options?.onSuccess?.(result);
         return result;
       } catch (err) {
-        // Rollback optimistic updates on signing/submission failure
-        if (previousPoolStats !== undefined) {
-          queryClient.setQueryData(queryKeys.pool.stats(), previousPoolStats);
-        }
-        if (previousDepositor !== undefined) {
-          queryClient.setQueryData(queryKeys.pool.depositor(depositorAddress), previousDepositor);
-        }
-
         const errorMessage = err instanceof Error ? err.message : "Deposit failed";
         transaction.fail(errorMessage);
         setError(errorMessage);
@@ -211,7 +216,12 @@ export function useWithdrawalOperation(options?: {
   onError?: (error: Error) => void;
 }) {
   const queryClient = useQueryClient();
-  const transactionId = `withdrawal-${Date.now()}`;
+  const { signTransaction } = useWallet();
+  const buildWithdraw = useWithdrawFromPool();
+  const { data: poolStats } = usePoolStats();
+
+  const uid = useId();
+  const transactionId = `withdrawal-${uid}`;
   const transaction = useTransaction(transactionId);
   const [error, setError] = useState<string | null>(null);
 
@@ -226,40 +236,40 @@ export function useWithdrawalOperation(options?: {
       transaction.start("Processing withdrawal...");
       setError(null);
 
-      // Save previous state for rollback
-      const previousPoolStats = queryClient.getQueryData(queryKeys.pool.stats());
-      const previousDepositor = queryClient.getQueryData(
-        queryKeys.pool.depositor(depositorAddress),
-      );
-
-      // Optimistically update cache before signing/submission
-      queryClient.setQueryData(queryKeys.pool.stats(), (old: PoolStats | undefined) => {
-        if (!old) return old;
-        return { ...old, totalDeposits: Math.max(0, old.totalDeposits - amount) };
-      });
-      queryClient.setQueryData(
-        queryKeys.pool.depositor(depositorAddress),
-        (old: DepositorPortfolio | undefined) => {
-          if (!old) return old;
-          return { ...old, depositAmount: Math.max(0, old.depositAmount - amount) };
-        },
-      );
-
       try {
-        transaction.updateProgress(25);
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        const token = poolStats?.poolTokenAddress;
+        if (!token) {
+          throw new Error("Pool token address not found. Please wait for stats to load.");
+        }
 
-        transaction.updateProgress(50);
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        // Step 1: Build unsigned transaction
+        transaction.updateProgress(20, "Building transaction...");
+        const buildResult = await buildWithdraw.mutateAsync({
+          amount,
+          depositorAddress,
+          token,
+        });
 
-        transaction.updateProgress(75);
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        // Step 2: Sign transaction (new signing state)
+        transaction.sign("Waiting for wallet signature...");
+        const signedTxXdr = await signTransaction(buildResult.unsignedTxXdr);
 
-        transaction.updateProgress(95);
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        // Step 3: Submit to network (new submitted state)
+        const submitResult = await submitPoolTransaction(signedTxXdr);
+        transaction.submit(
+          submitResult.txHash,
+          "Transaction submitted, waiting for confirmation...",
+        );
 
-        const txHash = `tx_${Date.now()}`;
-        transaction.complete(txHash);
+        // Step 4: Poll for confirmation (new confirming state)
+        transaction.confirm("Confirming transaction...");
+
+        // Simulate confirmation polling (in real implementation, poll the RPC)
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
+        // Mark complete
+        const txHash = submitResult.txHash;
+        transaction.complete(txHash, "Withdrawal successful!");
 
         queryClient.invalidateQueries({
           queryKey: queryKeys.pool.stats(),
@@ -272,14 +282,6 @@ export function useWithdrawalOperation(options?: {
         options?.onSuccess?.(result);
         return result;
       } catch (err) {
-        // Rollback optimistic updates on signing/submission failure
-        if (previousPoolStats !== undefined) {
-          queryClient.setQueryData(queryKeys.pool.stats(), previousPoolStats);
-        }
-        if (previousDepositor !== undefined) {
-          queryClient.setQueryData(queryKeys.pool.depositor(depositorAddress), previousDepositor);
-        }
-
         const errorMessage = err instanceof Error ? err.message : "Withdrawal failed";
         transaction.fail(errorMessage);
         setError(errorMessage);
