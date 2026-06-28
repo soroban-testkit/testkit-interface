@@ -234,14 +234,12 @@ jobs:
      
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          toolchain: stable
-          targets: wasm32-unknown-unknown
-          components: rustfmt, clippy
       - name: Cache dependencies
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: contracts
+          workspaces: |
+            contracts
+            contracts/fuzz
       - name: Format check
         run: cargo fmt --all -- --check
         working-directory: contracts
@@ -285,7 +283,18 @@ jobs:
           path: contracts/target/wasm32-unknown-unknown/release/*.wasm
           if-no-files-found: error
       - name: Install tarpaulin
-        run: cargo install cargo-tarpaulin
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-tarpaulin
       - name: Run coverage
         run: cargo tarpaulin --out Xml
         working-directory: contracts
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: contracts-coverage
+          path: contracts/cobertura.xml
+          retention-days: 7
+      - name: Check fuzz targets compile
+        run: cargo check
+        working-directory: contracts/fuzz
