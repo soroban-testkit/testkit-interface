@@ -88,7 +88,9 @@ export function LoanRepaymentForm({ loanId, totalOwed, minPayment = 0 }: LoanRep
     }
 
     if (numAmount > totalOwed) {
-      setError(`Amount cannot exceed total owed (${totalOwed} USDC)`);
+      setError(
+  `Amount cannot exceed total owed (${formatCurrency(totalOwed).replace("$", "")} USDC)`
+);
       return false;
     }
 
@@ -138,7 +140,7 @@ export function LoanRepaymentForm({ loanId, totalOwed, minPayment = 0 }: LoanRep
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-500 dark:text-zinc-500">Minimum Payment</span>
                 <span className="text-sm font-medium text-gray-700 dark:text-zinc-300">
-                  {minPayment} USDC
+                  {formatCurrency(minPayment).replace("$", "")} USDC
                 </span>
               </div>
             )}
