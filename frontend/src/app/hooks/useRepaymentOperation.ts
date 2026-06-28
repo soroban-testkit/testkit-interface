@@ -27,6 +27,7 @@ import { useWallet } from "../components/providers/WalletProvider";
 import {
   useDepositToPool,
   usePoolStats,
+  useRepayLoan,
   useWithdrawFromPool,
   submitPoolTransaction,
 } from "./useApi";
@@ -46,11 +47,11 @@ export function useRepaymentOperation(options?: {
   onSuccess?: (result: RepaymentOperationResult) => void;
   onError?: (error: Error) => void;
 }) {
-  const queryClient = useQueryClient();
   const uid = useId();
   const transactionId = `repayment-${uid}`;
   const transaction = useTransaction(transactionId);
   const [error, setError] = useState<string | null>(null);
+  const repayLoan = useRepayLoan();
 
   const executeRepayment = useCallback(
     async ({
@@ -62,36 +63,15 @@ export function useRepaymentOperation(options?: {
       setError(null);
 
       try {
-        // Step 1: Build unsigned transaction
-        transaction.updateProgress(20, "Building transaction...");
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        transaction.updateProgress(20, "Submitting repayment...");
 
-        // Step 2: Sign transaction (new signing state)
-        transaction.sign("Waiting for wallet signature...");
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        // useRepayLoan handles the full submit flow with optimistic cache updates
+        const response = await repayLoan.mutateAsync({ loanId, amount, borrowerAddress });
+        const txHash = response.txHash ?? String(loanId);
 
-        // Step 3: Submit to network (new submitted state)
-        const txHash = `tx_${Date.now()}`;
         transaction.submit(txHash, "Transaction submitted, waiting for confirmation...");
-        await new Promise((resolve) => setTimeout(resolve, 300));
-
-        // Step 4: Poll for confirmation (new confirming state)
         transaction.confirm("Confirming transaction...");
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Mark complete
         transaction.complete(txHash);
-
-        // Invalidate related queries
-        queryClient.invalidateQueries({
-          queryKey: ["loans"],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["borrowerLoans", borrowerAddress],
-        });
-        queryClient.invalidateQueries({
-          queryKey: ["pool", "stats"],
-        });
 
         const result = { txHash, status: "success" as const };
         options?.onSuccess?.(result);
@@ -104,7 +84,7 @@ export function useRepaymentOperation(options?: {
         throw err;
       }
     },
-    [transaction, queryClient, options],
+    [transaction, repayLoan, options],
   );
 
   return {
