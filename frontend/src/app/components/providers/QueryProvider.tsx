@@ -43,13 +43,10 @@ export function QueryProvider({ children }: QueryProviderProps) {
             refetchOnReconnect: true,
           },
           mutations: {
-            // Retry failed mutations once
-            retry: (failureCount) => {
-              if (typeof navigator !== "undefined" && navigator.onLine === false) {
-                return false;
-              }
-              return failureCount < 2;
-            },
+            // Never retry mutations: most mutationFns are non-idempotent
+            // (loan repayment, remittance creation, etc.) and retrying after
+            // a transient error can duplicate a request the server already processed.
+            retry: false,
           },
         },
       }),
