@@ -20,6 +20,7 @@ import {
   formatAmountOnBlur,
   getAssetDecimals,
 } from "../../utils/amount";
+import { formatCurrency } from "./loanFormatters";
 
 interface LoanRepaymentFormProps {
   loanId: number;
@@ -82,12 +83,14 @@ export function LoanRepaymentForm({ loanId, totalOwed, minPayment = 0 }: LoanRep
     }
 
     if (minPayment > 0 && numAmount < minPayment) {
-      setError(`Minimum payment is ${minPayment} USDC`);
+      setError(`Minimum payment is ${formatCurrency(minPayment).replace("$", "")} USDC`);
       return false;
     }
 
     if (numAmount > totalOwed) {
-      setError(`Amount cannot exceed total owed (${totalOwed} USDC)`);
+      setError(
+  `Amount cannot exceed total owed (${formatCurrency(totalOwed).replace("$", "")} USDC)`
+);
       return false;
     }
 
@@ -130,14 +133,14 @@ export function LoanRepaymentForm({ loanId, totalOwed, minPayment = 0 }: LoanRep
             <div className="flex justify-between items-center mb-2">
               <span className="text-sm text-gray-600 dark:text-zinc-400">Total Owed</span>
               <span className="text-2xl font-bold text-gray-900 dark:text-zinc-100">
-                {totalOwed} USDC
+                {formatCurrency(totalOwed).replace("$", "")} USDC
               </span>
             </div>
             {minPayment > 0 && (
               <div className="flex justify-between items-center">
                 <span className="text-xs text-gray-500 dark:text-zinc-500">Minimum Payment</span>
                 <span className="text-sm font-medium text-gray-700 dark:text-zinc-300">
-                  {minPayment} USDC
+                  {formatCurrency(minPayment).replace("$", "")} USDC
                 </span>
               </div>
             )}
@@ -163,7 +166,7 @@ export function LoanRepaymentForm({ loanId, totalOwed, minPayment = 0 }: LoanRep
             />
 
             <Button variant="ghost" size="sm" onClick={handlePayFullAmount} className="w-full">
-              Pay Full Amount ({totalOwed} USDC)
+              Pay Full Amount ({formatCurrency(totalOwed).replace("$", "")} USDC)
             </Button>
           </div>
 

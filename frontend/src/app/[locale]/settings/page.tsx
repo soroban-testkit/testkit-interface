@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import {
   User,
   Wallet,
@@ -54,6 +54,14 @@ const SECTIONS = [
 ] as const;
 
 type SectionId = (typeof SECTIONS)[number]["id"];
+
+function settingsTabId(id: SectionId) {
+  return `settings-tab-${id}`;
+}
+
+function settingsPanelId(id: SectionId) {
+  return `settings-panel-${id}`;
+}
 
 // ─── Copy-to-clipboard helper ─────────────────────────────────────────────────
 
@@ -637,6 +645,32 @@ export default function SettingsPage() {
   const [activeSection, setActiveSection] = useState<SectionId>("profile");
   const handleLogout = () => logoutUser("manual");
 
+  const activateSection = (id: SectionId) => {
+    setActiveSection(id);
+    requestAnimationFrame(() => {
+      document.getElementById(settingsTabId(id))?.focus();
+    });
+  };
+
+  const handleTabKeyDown = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = (index + 1) % SECTIONS.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex = (index - 1 + SECTIONS.length) % SECTIONS.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = SECTIONS.length - 1;
+    }
+
+    if (nextIndex === null) return;
+
+    event.preventDefault();
+    activateSection(SECTIONS[nextIndex].id);
+  };
+
   const renderSection = () => {
     switch (activeSection) {
       case "profile":
@@ -677,27 +711,50 @@ export default function SettingsPage() {
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Side nav */}
         <nav aria-label="Settings sections" className="lg:w-52 flex-shrink-0">
-          <ul className="flex flex-row lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0">
-            {SECTIONS.map(({ id, label, icon: Icon }) => (
-              <li key={id}>
-                <button
-                  onClick={() => setActiveSection(id)}
-                  className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium w-full transition-colors whitespace-nowrap ${
-                    activeSection === id
-                      ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
-                      : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
-                  }`}
-                >
-                  <Icon className="h-4 w-4 flex-shrink-0" />
-                  {label}
-                </button>
-              </li>
-            ))}
+          <ul
+            role="tablist"
+            aria-orientation="vertical"
+            className="flex flex-row lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0"
+          >
+            {SECTIONS.map(({ id, label, icon: Icon }, index) => {
+              const isActive = activeSection === id;
+
+              return (
+                <li key={id} role="presentation">
+                  <button
+                    type="button"
+                    role="tab"
+                    id={settingsTabId(id)}
+                    aria-selected={isActive}
+                    aria-controls={settingsPanelId(id)}
+                    tabIndex={isActive ? 0 : -1}
+                    onClick={() => activateSection(id)}
+                    onKeyDown={(event) => handleTabKeyDown(event, index)}
+                    className={`flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium w-full transition-colors whitespace-nowrap ${
+                      isActive
+                        ? "bg-indigo-50 text-indigo-600 dark:bg-indigo-500/10 dark:text-indigo-400"
+                        : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                    {label}
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </nav>
 
         {/* Content */}
-        <div className="flex-1 min-w-0">{renderSection()}</div>
+        <div
+          role="tabpanel"
+          id={settingsPanelId(activeSection)}
+          aria-labelledby={settingsTabId(activeSection)}
+          tabIndex={0}
+          className="flex-1 min-w-0"
+        >
+          {renderSection()}
+        </div>
       </div>
     </main>
   );
