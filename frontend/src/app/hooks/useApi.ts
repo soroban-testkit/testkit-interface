@@ -1317,11 +1317,7 @@ export function useDepositorPortfolio(
 // ─── Notification types & hooks ───────────────────────────────────────────────
 
 export type NotificationType =
-  | "loan_approved"
-  | "repayment_due"
-  | "repayment_confirmed"
-  | "loan_defaulted"
-  | "score_changed";
+  "loan_approved" | "repayment_due" | "repayment_confirmed" | "loan_defaulted" | "score_changed";
 
 export interface AppNotification {
   id: number;

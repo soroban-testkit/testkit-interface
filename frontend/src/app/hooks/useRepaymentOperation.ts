@@ -29,6 +29,7 @@ import {
   usePoolStats,
   useWithdrawFromPool,
   submitPoolTransaction,
+  queryKeys,
 } from "./useApi";
 
 interface RepaymentOperationOptions {
@@ -179,10 +180,10 @@ export function useDepositOperation(options?: {
         transaction.complete(txHash, "Deposit successful!");
 
         queryClient.invalidateQueries({
-          queryKey: ["pool", "stats"],
+          queryKey: queryKeys.pool.stats(),
         });
         queryClient.invalidateQueries({
-          queryKey: ["pool", "depositor", depositorAddress],
+          queryKey: queryKeys.pool.depositor(depositorAddress),
         });
 
         const result = { txHash };
@@ -271,10 +272,10 @@ export function useWithdrawalOperation(options?: {
         transaction.complete(txHash, "Withdrawal successful!");
 
         queryClient.invalidateQueries({
-          queryKey: ["pool", "stats"],
+          queryKey: queryKeys.pool.stats(),
         });
         queryClient.invalidateQueries({
-          queryKey: ["pool", "depositor", depositorAddress],
+          queryKey: queryKeys.pool.depositor(depositorAddress),
         });
 
         const result = { txHash };

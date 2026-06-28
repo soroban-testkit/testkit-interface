@@ -243,19 +243,21 @@ export default function Home() {
     return (
       <main className="space-y-8 min-h-screen p-8 lg:p-12 max-w-7xl mx-auto animate-in fade-in duration-500">
         <header>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">{t("disconnected.heading")}</h1>
-          <p className="text-zinc-500 dark:text-zinc-400">
-            {t("disconnected.subheading")}
-          </p>
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            {t("disconnected.heading")}
+          </h1>
+          <p className="text-zinc-500 dark:text-zinc-400">{t("disconnected.subheading")}</p>
         </header>
 
         <section className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 opacity-50 grayscale-[0.5]">
-          {([
-            t("stats.netWorth"),
-            t("stats.activeLoans"),
-            t("stats.totalRemitted"),
-            t("stats.yieldApy"),
-          ] as string[]).map((label, i) => (
+          {(
+            [
+              t("stats.netWorth"),
+              t("stats.activeLoans"),
+              t("stats.totalRemitted"),
+              t("stats.yieldApy"),
+            ] as string[]
+          ).map((label, i) => (
             <div
               key={i}
               className="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-950"
@@ -507,10 +509,7 @@ export default function Home() {
                 <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">
                   {t("creditScore.label")}
                 </h3>
-                <Tooltip
-                  content={t("creditScore.tooltip")}
-                  label={t("creditScore.tooltipLabel")}
-                />
+                <Tooltip content={t("creditScore.tooltip")} label={t("creditScore.tooltipLabel")} />
               </div>
               <CreditScoreGauge
                 score={currentCreditScore ?? 300}
