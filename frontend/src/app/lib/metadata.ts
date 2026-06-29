@@ -7,12 +7,13 @@ type PageMetadataInput = {
   description: string;
 };
 
-const DEFAULT_SITE_URL = "http://localhost:3000";
+const LOCALES = ["en", "es", "tl"] as const;
+const DEFAULT_SITE_URL = "https://remitlend.com";
 const SITE_NAME = "RemitLend";
 const OG_IMAGE_PATH = "/og-image.png";
 
-function getSiteUrl() {
-  const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
+export function getSiteUrl() {
+  const configuredUrl = process.env.NEXT_PUBLIC_APP_URL ?? DEFAULT_SITE_URL;
 
   try {
     return new URL(configuredUrl);
@@ -33,11 +34,17 @@ export function buildPageMetadata({
   const url = new URL(pathname, siteUrl).toString();
   const ogImage = new URL(OG_IMAGE_PATH, siteUrl).toString();
 
+  const languages = Object.fromEntries(
+    LOCALES.map((loc) => [loc, new URL(`/${loc}${normalizedPath}`, siteUrl).toString()])
+  );
+  languages["x-default"] = new URL(`/en${normalizedPath}`, siteUrl).toString();
+
   return {
     title,
     description,
     alternates: {
       canonical: pathname,
+      languages,
     },
     openGraph: {
       title,

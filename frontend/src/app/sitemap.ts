@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
+import { getSiteUrl } from "./lib/metadata";
 
-const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://remitlend.com";
+const BASE_URL = getSiteUrl().toString();
 
 const locales = ["en", "es", "tl"] as const;
 

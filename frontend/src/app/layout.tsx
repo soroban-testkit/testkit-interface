@@ -11,18 +11,7 @@ import { ErrorBoundary } from "./components/global_ui/ErrorBoundary";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale, getMessages } from "next-intl/server";
 import { THEME_STORAGE_KEY } from "./lib/theme";
-
-const DEFAULT_SITE_URL = "http://localhost:3000";
-
-function getMetadataBase() {
-  const configuredUrl = process.env.NEXT_PUBLIC_SITE_URL ?? DEFAULT_SITE_URL;
-
-  try {
-    return new URL(configuredUrl);
-  } catch {
-    return new URL(DEFAULT_SITE_URL);
-  }
-}
+import { getSiteUrl } from "./lib/metadata";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -35,7 +24,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: getMetadataBase(),
+  metadataBase: getSiteUrl(),
   title: "RemitLend - Borderless P2P Lending & Remittance",
   description:
     "Global peer-to-peer lending and instant remittances powered by blockchain technology. Send money and grow your wealth across borders.",
