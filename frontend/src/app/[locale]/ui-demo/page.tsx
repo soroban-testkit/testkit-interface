@@ -184,7 +184,11 @@ export default function UIDemoPage() {
                 Focus-trapped, animated, keyboard-dismissible.
               </p>
               <Button onClick={() => setIsModalOpen(true)}>Open Demo Modal</Button>
-              <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Privacy Settings">
+              <Modal
+                isOpen={isModalOpen}
+                onClose={() => setIsModalOpen(false)}
+                title="Privacy Settings"
+              >
                 <div className="space-y-4">
                   <p className="text-sm text-gray-500 dark:text-zinc-400">
                     Are you sure you want to update your privacy settings? This will affect how your

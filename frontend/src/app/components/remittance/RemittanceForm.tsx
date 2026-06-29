@@ -170,10 +170,14 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
 
             {/* Token Selection */}
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              <label
+                htmlFor="token"
+                className="block text-sm font-semibold text-zinc-900 dark:text-zinc-50"
+              >
                 Token <span className="text-red-600">*</span>
               </label>
               <select
+                id="token"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
                 disabled={mutation.isPending}
@@ -212,18 +216,23 @@ export function RemittanceForm({ onSuccess }: RemittanceFormProps) {
 
             {/* Memo (Optional) */}
             <div className="space-y-2">
-              <label className="block text-sm font-semibold text-zinc-900 dark:text-zinc-50">
+              <label
+                htmlFor="memo"
+                className="block text-sm font-semibold text-zinc-900 dark:text-zinc-50"
+              >
                 Memo <span className="text-zinc-400">(optional)</span>
               </label>
               <textarea
+                id="memo"
                 placeholder="Add a note for the recipient (max 28 characters)"
                 value={memo}
                 onChange={(e) => handleMemoChange(e.target.value)}
                 disabled={mutation.isPending}
                 maxLength={28}
                 rows={2}
-                className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-indigo-600 dark:focus:ring-indigo-400 resize-none dark:border-zinc-700 ${errors.memo ? "border-red-600" : "border-zinc-300"
-                  }`}
+                className={`w-full px-3 py-2 border rounded-lg bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-50 focus:outline-none focus:ring-2 focus:ring-indigo-600 dark:focus:ring-indigo-400 resize-none dark:border-zinc-700 ${
+                  errors.memo ? "border-red-600" : "border-zinc-300"
+                }`}
               />
               {errors.memo && (
                 <div className="flex items-start gap-2 text-sm text-red-600">

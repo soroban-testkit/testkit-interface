@@ -235,6 +235,7 @@ export default function RemittancesPage() {
               <input
                 type="text"
                 placeholder="Search by recipient or currency..."
+                aria-label="Search remittances"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full rounded-lg border border-zinc-200 bg-white pl-10 pr-4 py-2 text-sm text-zinc-900 placeholder:text-zinc-400 focus:border-indigo-500 focus:outline-none dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-50"

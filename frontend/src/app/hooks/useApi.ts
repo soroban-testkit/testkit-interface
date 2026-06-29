@@ -44,6 +44,8 @@ export const queryKeys = {
     liquidatable: () => ["loans", "liquidatable"] as const,
     borrowerPage: (address: string, params: Record<string, unknown>) =>
       ["loans", "borrower", address, params] as const,
+    // Prefix key that matches all borrowerPage entries for an address regardless of pagination params
+    borrowerPagePrefix: (address: string) => ["loans", "borrower", address] as const,
   },
   remittances: {
     all: () => ["remittances"] as const,
@@ -878,6 +880,7 @@ export function useCreateLoan(
   >,
 ) {
   const queryClient = useQueryClient();
+  const walletAddress = useUserStore((s) => s.user?.walletAddress);
 
   return useMutation<Loan & { txHash?: string }, Error, Omit<Loan, "id" | "createdAt" | "status">>({
     mutationFn: (data) =>
@@ -886,8 +889,13 @@ export function useCreateLoan(
         body: JSON.stringify(data),
       }),
     onSuccess: () => {
-      // Invalidate the loans list so it refetches with the new entry
       queryClient.invalidateQueries({ queryKey: queryKeys.loans.all() });
+      // Also invalidate borrowerLoans.byAddress so both borrower-loan lists stay consistent (#1219)
+      if (walletAddress) {
+        queryClient.invalidateQueries({
+          queryKey: queryKeys.borrowerLoans.byAddress(walletAddress),
+        });
+      }
     },
     ...options,
   });
@@ -1077,71 +1085,115 @@ export function useCreditScore(
 
     let cancelled = false;
     let retryDelay = 1_000;
-    let eventSource: EventSource | null = null;
+    let abortControllerRef: AbortController | null = null;
     let retryTimeout: ReturnType<typeof setTimeout> | null = null;
 
-    const connect = () => {
+    const connect = async () => {
       if (cancelled) {
         return;
       }
 
-      const url = `${API_URL}/api/events/stream?borrower=${encodeURIComponent(walletAddress)}`;
-      const es = new EventSource(url, { withCredentials: true });
-      eventSource = es;
+      if (abortControllerRef) {
+        abortControllerRef.abort();
+      }
 
-      es.onopen = () => {
-        retryDelay = 1_000;
-      };
+      const controller = new AbortController();
+      abortControllerRef = controller;
 
-      es.onmessage = (event: MessageEvent<string>) => {
-        try {
-          const payload = JSON.parse(event.data) as {
-            type?: string;
-            borrower?: string;
-            eventType?: string;
-          };
+      try {
+        const url = `${API_URL}/api/events/stream?borrower=${encodeURIComponent(walletAddress)}`;
+        const headers: Record<string, string> = {
+          Accept: "text/event-stream",
+        };
 
-          if (payload.type === "init") {
-            return;
-          }
-
-          const scoreChangingEvent =
-            payload.eventType === "LoanRepaid" || payload.eventType === "LoanDefaulted";
-
-          if (payload.borrower === walletAddress && scoreChangingEvent) {
-            const currentScore = queryClient.getQueryData<number>(queryKeys.creditScore.byUser(userId ?? ""));
-
-            setPreviousScoreState({
-              walletAddress,
-              previousScore: currentScore,
-            });
-
-            queryClient.invalidateQueries({
-              queryKey: queryKeys.creditScore.byUser(userId ?? ""),
-            });
-          }
-        } catch {
-          // Ignore malformed SSE payloads.
+        if (token) {
+          headers["Authorization"] = `Bearer ${token}`;
         }
-      };
 
-      es.onerror = () => {
-        es.close();
-        eventSource = null;
+        const response = await fetch(url, {
+          headers,
+          signal: controller.signal,
+        });
+
+        if (!response.ok) {
+          throw new Error(`SSE connection failed: ${response.status}`);
+        }
+
+        if (!response.body) {
+          throw new Error("Response body is null");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        retryDelay = 1_000;
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const parts = buffer.split("\n\n");
+          buffer = parts.pop() || "";
+
+          for (const part of parts) {
+            const lines = part.split("\n");
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                const dataStr = line.slice(6);
+                try {
+                  const payload = JSON.parse(dataStr) as {
+                    type?: string;
+                    borrower?: string;
+                    eventType?: string;
+                  };
+
+                  if (payload.type === "init") {
+                    continue;
+                  }
+
+                  const scoreChangingEvent =
+                    payload.eventType === "LoanRepaid" || payload.eventType === "LoanDefaulted";
+
+                  if (payload.borrower === walletAddress && scoreChangingEvent) {
+                    const currentScore = queryClient.getQueryData<number>(queryKeys.creditScore.byUser(userId ?? ""));
+
+                    setPreviousScoreState({
+                      walletAddress,
+                      previousScore: currentScore,
+                    });
+
+                    queryClient.invalidateQueries({
+                      queryKey: queryKeys.creditScore.byUser(userId ?? ""),
+                    });
+                  }
+                } catch {
+                  // Ignore malformed SSE payloads.
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") {
+          return;
+        }
 
         if (!cancelled) {
           const delay = Math.min(retryDelay, 30_000);
           retryDelay = Math.min(retryDelay * 2, 30_000);
-          retryTimeout = setTimeout(connect, delay);
+          retryTimeout = setTimeout(() => void connect(), delay);
         }
-      };
+      }
     };
 
-    connect();
+    void connect();
 
     return () => {
       cancelled = true;
-      eventSource?.close();
+      if (abortControllerRef) {
+        abortControllerRef.abort();
+      }
       if (retryTimeout) {
         clearTimeout(retryTimeout);
       }
@@ -1293,11 +1345,7 @@ export function useDepositorPortfolio(
 // ─── Notification types & hooks ───────────────────────────────────────────────
 
 export type NotificationType =
-  | "loan_approved"
-  | "repayment_due"
-  | "repayment_confirmed"
-  | "loan_defaulted"
-  | "score_changed";
+  "loan_approved" | "repayment_due" | "repayment_confirmed" | "loan_defaulted" | "score_changed";
 
 export interface AppNotification {
   id: number;
@@ -1579,6 +1627,10 @@ export function useRepayLoan() {
       queryClient.invalidateQueries({ queryKey: queryKeys.loans.detail(String(loanId)) });
       queryClient.invalidateQueries({
         queryKey: queryKeys.borrowerLoans.byAddress(borrowerAddress),
+      });
+      // Also invalidate paginated borrower loans (borrowerPage) so both namespaces stay in sync (#1219)
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.loans.borrowerPagePrefix(borrowerAddress),
       });
       queryClient.invalidateQueries({ queryKey: queryKeys.pool.stats() });
     },

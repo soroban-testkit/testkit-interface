@@ -1,5 +1,23 @@
 import type { MetadataRoute } from "next";
 
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL ?? "https://remitlend.com";
+
+const locales = ["en", "es", "tl"] as const;
+
+const privateRoutes = [
+  "/activity",
+  "/admin",
+  "/analytics",
+  "/loans",
+  "/notifications",
+  "/remittances",
+  "/repay",
+  "/request-loan",
+  "/send-remittance",
+  "/settings",
+  "/wallet",
+];
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: [
@@ -8,20 +26,12 @@ export default function robots(): MetadataRoute.Robots {
         allow: ["/"],
         disallow: [
           "/api/",
-          "/[locale]/activity",
-          "/[locale]/admin",
-          "/[locale]/analytics",
-          "/[locale]/loans",
-          "/[locale]/notifications",
-          "/[locale]/remittances",
-          "/[locale]/repay",
-          "/[locale]/request-loan",
-          "/[locale]/send-remittance",
-          "/[locale]/settings",
-          "/[locale]/wallet",
+          ...locales.flatMap((locale) =>
+            privateRoutes.map((route) => `/${locale}${route}`)
+          ),
         ],
       },
     ],
-    sitemap: `${process.env.NEXT_PUBLIC_APP_URL ?? "https://remitlend.com"}/sitemap.xml`,
+    sitemap: `${BASE_URL}/sitemap.xml`,
   };
 }
