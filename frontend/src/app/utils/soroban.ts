@@ -55,7 +55,7 @@ export async function buildUnsignedLoanRequestXdr({
           new xdr.InvokeContractArgs({
             contractAddress: Address.fromString(contractId).toScAddress(),
             functionName: "request_loan",
-            args: [borrowerScVal, amountScVal, termScVal],
+            args: [borrowerScVal, termScVal, amountScVal],
           }),
         ),
         auth: [],
@@ -93,7 +93,7 @@ export async function buildUnsignedRepaymentXdr({
           new xdr.InvokeContractArgs({
             contractAddress: Address.fromString(contractId).toScAddress(),
             functionName: "repay",
-            args: [borrowerScVal, loanIdScVal, amountScVal],
+            args: [borrowerScVal, amountScVal, loanIdScVal],
           }),
         ),
         auth: [],
