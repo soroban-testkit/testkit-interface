@@ -1,9 +1,9 @@
-import { useMutation } from '@tanstack/react-query';
-import { useState, useCallback } from 'react';
+import { useMutation } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
 
 interface RevealOptions {
   recipientId: string;
-  field: 'email' | 'phone' | 'name';
+  field: "email" | "phone" | "name";
   reason: string;
 }
 
@@ -12,17 +12,14 @@ export function useReveal() {
 
   const mutation = useMutation({
     mutationFn: async (options: RevealOptions): Promise<string> => {
-      const res = await fetch(
-        `/api/recipients/${options.recipientId}/reveal`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            field: options.field,
-            reason: options.reason,
-          }),
-        },
-      );
+      const res = await fetch(`/api/recipients/${options.recipientId}/reveal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          field: options.field,
+          reason: options.reason,
+        }),
+      });
 
       if (!res.ok) {
         throw new Error(`Reveal failed: ${res.statusText}`);
