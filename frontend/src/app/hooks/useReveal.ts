@@ -31,8 +31,6 @@ export function useReveal() {
     onSuccess: (value) => {
       setRevealedValue(value);
     },
-    staleTime: 0,
-    gcTime: 0,
   });
 
   const clearRevealed = useCallback(() => {
