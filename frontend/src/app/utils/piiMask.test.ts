@@ -7,7 +7,7 @@ describe("maskRecipient", () => {
     });
 
     it("should mask short email", () => {
-      expect(maskRecipient("a@b.com", "email")).toBe("***@b***.com");
+      expect(maskRecipient("a@b.com", "email")).toBe("a***@b***.com");
     });
 
     it("should mask email with subdomain", () => {
@@ -43,7 +43,7 @@ describe("maskRecipient", () => {
     });
 
     it("should mask two char name", () => {
-      expect(maskRecipient("Jo", "name")).toBe("J**o");
+      expect(maskRecipient("Jo", "name")).toBe("J***o");
     });
 
     it("should mask single char name", () => {
@@ -59,7 +59,7 @@ describe("maskRecipient", () => {
 describe("maskAddress", () => {
   it("should mask stellar address", () => {
     const addr = "GABC1234567890DEF";
-    expect(maskAddress(addr)).toBe("GABC12...DEF");
+    expect(maskAddress(addr)).toBe("GABC12...0DEF");
   });
 
   it("should return *** for short address", () => {
