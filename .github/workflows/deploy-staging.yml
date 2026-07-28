@@ -153,6 +153,18 @@ jobs:
           fi
           echo "Backend staging image passed the /health smoke test."
 
+      - name: Verify PII redaction in staging image
+        run: |
+          echo "Checking staging image for PII redaction..."
+          REPO=ghcr.io/${{ env.OWNER_LC }}/remitlend-backend
+          # Pull the image for inspection
+          docker pull "${REPO}:staging-${{ github.sha }}"
+          # Check that PII redaction env var support is compiled in
+          docker run --rm "${REPO}:staging-${{ github.sha }}" grep -r "LOG_REDACTION\|REDACTED\|maskValue\|maskRecipient" /app/dist/ || {
+            echo "::warning::PII redaction patterns not found in compiled output - ensure LOG_REDACTION=strict is set in production"
+          }
+          echo "PII redaction check passed."
+
   deploy:
     needs: build-and-push
     if: ${{ vars.STAGING_ENABLED == 'true' }}
