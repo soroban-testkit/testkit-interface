@@ -48,8 +48,10 @@ describe("buildUnsignedRepaymentXdr", () => {
     if (op.type === "invokeHostFunction") {
       const invokeArgs = op.func.invokeContract();
       const args = invokeArgs.args();
-      const amountVal = scValToNative(args[1]);
+      const loanIdVal = scValToNative(args[1]);
+      const amountVal = scValToNative(args[2]);
 
+      expect(loanIdVal).toBe(BigInt(loanId));
       expect(amountVal).toBe(BigInt(inputAmount));
       expect(amountVal).not.toBe(BigInt(inputAmount / 10));
     }
