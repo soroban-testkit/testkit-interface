@@ -300,6 +300,17 @@ jobs:
       - name: Check env docs are in sync
         run: node scripts/check-env-docs.mjs
 
+  error-code-mapping-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Check every backend ErrorCode has a frontend message mapping
+        run: node scripts/check-error-code-mappings.mjs
+
   contracts:
     needs: money-policy
     runs-on: ubuntu-latest
