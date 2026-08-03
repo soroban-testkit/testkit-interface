@@ -77,7 +77,8 @@ export function PauseBanner() {
             </p>
             {pauseState.contracts.length > 0 && (
               <p className="mt-1 text-xs">
-                Affected contracts: <code className="font-mono">{pauseState.contracts.join(", ")}</code>
+                Affected contracts:{" "}
+                <code className="font-mono">{pauseState.contracts.join(", ")}</code>
               </p>
             )}
             {pauseState.pausedAt && (
