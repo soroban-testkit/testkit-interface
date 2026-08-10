@@ -469,8 +469,8 @@ function NotificationsSection() {
           {updateNotificationPreferences.isPending
             ? "Saving..."
             : saved
-              ? "Saved!"
-              : "Save Preferences"}
+            ? "Saved!"
+            : "Save Preferences"}
         </Button>
       </CardContent>
     </Card>

@@ -98,7 +98,7 @@ function getFallbackHorizonUrl(networkName: string | undefined): string {
 
 function mapBalances(balances: HorizonBalance[] | undefined): TokenBalance[] {
   return (balances ?? []).map((balance) => ({
-    symbol: balance.asset_type === "native" ? "XLM" : (balance.asset_code ?? "ASSET"),
+    symbol: balance.asset_type === "native" ? "XLM" : balance.asset_code ?? "ASSET",
     amount: balance.balance,
     usdValue: null,
   }));
@@ -181,8 +181,8 @@ export function WalletProvider({ children }: WalletProviderProps) {
       const networkResult: FreighterNetworkResult = api.getNetworkDetails
         ? await api.getNetworkDetails()
         : api.getNetwork
-          ? await api.getNetwork()
-          : { error: "Network info not available." };
+        ? await api.getNetwork()
+        : { error: "Network info not available." };
 
       if (networkResult.error) {
         throw new Error(normalizeWalletError(networkResult.error));

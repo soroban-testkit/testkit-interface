@@ -239,10 +239,10 @@ export function Header({ onMenuClick, className }: HeaderProps) {
   const profileLabel = user?.email
     ? user.email
     : user?.walletAddress
-      ? truncateWalletAddress(user.walletAddress)
-      : walletAddress
-        ? truncateWalletAddress(walletAddress)
-        : "Connect Wallet";
+    ? truncateWalletAddress(user.walletAddress)
+    : walletAddress
+    ? truncateWalletAddress(walletAddress)
+    : "Connect Wallet";
 
   return (
     <header

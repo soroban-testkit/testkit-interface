@@ -150,7 +150,7 @@ export function formatStroops(value: bigint, opts: FormatStroopsOptions = {}): s
   const fraction = scaledMagnitude % scale;
 
   const wholeStr =
-    (opts.grouped ?? false) ? whole.toLocaleString(opts.locale ?? "en-US") : whole.toString();
+    opts.grouped ?? false ? whole.toLocaleString(opts.locale ?? "en-US") : whole.toString();
 
   const sign = negative && scaledMagnitude !== ZERO ? "-" : "";
 
