@@ -142,10 +142,10 @@ export function LoanDetailsPageClient() {
                 realtimeStatus === "connected"
                   ? "bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400"
                   : realtimeStatus === "polling"
-                  ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
-                  : realtimeStatus === "disconnected"
-                  ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300"
-                  : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                    ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
+                    : realtimeStatus === "disconnected"
+                      ? "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300"
+                      : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
               }`}
             >
               {realtimeStatus === "connected" ? (
@@ -156,10 +156,10 @@ export function LoanDetailsPageClient() {
               {realtimeStatus === "connected"
                 ? "Live loan updates"
                 : realtimeStatus === "polling"
-                ? "Polling while reconnecting"
-                : realtimeStatus === "disconnected"
-                ? "Realtime temporarily unavailable"
-                : "Connecting to live updates"}
+                  ? "Polling while reconnecting"
+                  : realtimeStatus === "disconnected"
+                    ? "Realtime temporarily unavailable"
+                    : "Connecting to live updates"}
             </div>
           </div>
           <button
@@ -318,15 +318,15 @@ export function LoanDetailsPageClient() {
                   daysRemaining <= 3
                     ? "text-red-600 dark:text-red-400"
                     : daysRemaining <= 7
-                    ? "text-amber-600 dark:text-amber-400"
-                    : "text-zinc-900 dark:text-zinc-50"
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-zinc-900 dark:text-zinc-50"
                 }`}
               >
                 {daysRemaining <= 0
                   ? "Overdue"
                   : daysRemaining === 1
-                  ? "Due tomorrow"
-                  : `${daysRemaining} days`}
+                    ? "Due tomorrow"
+                    : `${daysRemaining} days`}
               </p>
               {nextDeadline && (
                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -398,10 +398,10 @@ export function LoanDetailsPageClient() {
               {loan.status === "liquidated"
                 ? "Collateral was liquidated after the position fell below the collateral threshold."
                 : loan.status === "defaulted"
-                ? "Collateral has been seized."
-                : loan.status === "repaid"
-                ? "Collateral released — loan fully repaid."
-                : "Collateral is held in escrow for the duration of this loan."}
+                  ? "Collateral has been seized."
+                  : loan.status === "repaid"
+                    ? "Collateral released — loan fully repaid."
+                    : "Collateral is held in escrow for the duration of this loan."}
             </p>
           </div>
         </aside>

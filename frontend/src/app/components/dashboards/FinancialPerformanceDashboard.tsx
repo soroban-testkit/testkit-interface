@@ -215,8 +215,8 @@ export function FinancialPerformanceDashboard({
   // ── Derived display data ──
   const displayCreditScoreData = useMockData
     ? generateMockCreditScoreData()
-    : creditScoreData ?? [];
-  const displayYieldData = useMockData ? generateMockYieldData() : yieldData ?? [];
+    : (creditScoreData ?? []);
+  const displayYieldData = useMockData ? generateMockYieldData() : (yieldData ?? []);
 
   const displayLoanStats = useMemo(() => {
     if (useMockData) return generateMockLoanStats();
@@ -302,8 +302,8 @@ export function FinancialPerformanceDashboard({
             {userType === "both"
               ? "credit score and yield"
               : userType === "borrower"
-              ? "credit score"
-              : "yield"}{" "}
+                ? "credit score"
+                : "yield"}{" "}
             performance over time
           </p>
         </div>
