@@ -797,8 +797,8 @@ export function useLiquidatableLoans(
       const loans = Array.isArray(response)
         ? response
         : "loans" in response
-        ? response.loans
-        : response.data;
+          ? response.loans
+          : response.data;
 
       const fallbackSource = Array.isArray(response) ? undefined : response.source;
       return loans.map((loan) =>
@@ -1493,8 +1493,8 @@ export function useAdminDisputes(
       const disputes = Array.isArray(response)
         ? response
         : "disputes" in response
-        ? response.disputes
-        : response.data;
+          ? response.disputes
+          : response.data;
 
       return disputes.map(normalizeDispute);
     },

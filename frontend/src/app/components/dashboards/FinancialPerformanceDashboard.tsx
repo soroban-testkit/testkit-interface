@@ -215,8 +215,8 @@ export function FinancialPerformanceDashboard({
   // ── Derived display data ──
   const displayCreditScoreData = useMockData
     ? generateMockCreditScoreData()
-    : creditScoreData ?? [];
-  const displayYieldData = useMockData ? generateMockYieldData() : yieldData ?? [];
+    : (creditScoreData ?? []);
+  const displayYieldData = useMockData ? generateMockYieldData() : (yieldData ?? []);
 
   const displayLoanStats = useMemo(() => {
     if (useMockData) return generateMockLoanStats();
@@ -302,8 +302,8 @@ export function FinancialPerformanceDashboard({
             {userType === "both"
               ? "credit score and yield"
               : userType === "borrower"
-              ? "credit score"
-              : "yield"}{" "}
+                ? "credit score"
+                : "yield"}{" "}
             performance over time
           </p>
         </div>
@@ -354,9 +354,7 @@ export function FinancialPerformanceDashboard({
             <StatCard
               title="On-time Rate"
               value={`${displayLoanStats.onTimeRate}%`}
-              sub={`${displayLoanStats.repaid} of ${
-                displayLoanStats.repaid + displayLoanStats.defaulted
-              } resolved`}
+              sub={`${displayLoanStats.repaid} of ${displayLoanStats.repaid + displayLoanStats.defaulted} resolved`}
               colorClass="bg-purple-50 text-purple-900 dark:bg-purple-950/30 dark:text-purple-200"
             />
           </div>
@@ -419,11 +417,7 @@ export function FinancialPerformanceDashboard({
               value={fmt(displayDepositorStats.currentValue)}
               sub={
                 displayDepositorStats.depositAmount > 0
-                  ? `+${(
-                      ((displayDepositorStats.currentValue - displayDepositorStats.depositAmount) /
-                        displayDepositorStats.depositAmount) *
-                      100
-                    ).toFixed(2)}% growth`
+                  ? `+${(((displayDepositorStats.currentValue - displayDepositorStats.depositAmount) / displayDepositorStats.depositAmount) * 100).toFixed(2)}% growth`
                   : undefined
               }
               colorClass="bg-blue-50 text-blue-900 dark:bg-blue-950/30 dark:text-blue-200"

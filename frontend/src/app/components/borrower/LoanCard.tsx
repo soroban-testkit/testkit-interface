@@ -34,19 +34,19 @@ export function LoanCard({ loan, variant = "compact" }: LoanCardProps) {
           label: isLiquidated
             ? "Liquidated"
             : isDefaulted
-            ? "Defaulted"
-            : isOverdue
-            ? "Overdue"
-            : isUrgent
-            ? "Due Soon"
-            : "On Track",
+              ? "Defaulted"
+              : isOverdue
+                ? "Overdue"
+                : isUrgent
+                  ? "Due Soon"
+                  : "On Track",
           className: isTerminalDistressed
             ? "bg-red-900 text-white"
             : isOverdue
-            ? "bg-red-100 text-red-800"
-            : isUrgent
-            ? "bg-yellow-100 text-yellow-800"
-            : "bg-green-100 text-green-800",
+              ? "bg-red-100 text-red-800"
+              : isUrgent
+                ? "bg-yellow-100 text-yellow-800"
+                : "bg-green-100 text-green-800",
         }
       : null;
 
@@ -54,31 +54,31 @@ export function LoanCard({ loan, variant = "compact" }: LoanCardProps) {
   const deadlineBg = isTerminalDistressed
     ? "bg-red-900/20"
     : isOverdue
-    ? "bg-red-50"
-    : isUrgent
-    ? "bg-yellow-50"
-    : "bg-gray-50";
+      ? "bg-red-50"
+      : isUrgent
+        ? "bg-yellow-50"
+        : "bg-gray-50";
   const deadlineTextColor = isTerminalDistressed
     ? "text-red-900"
     : isOverdue
-    ? "text-red-600"
-    : isUrgent
-    ? "text-yellow-600"
-    : "text-gray-900";
+      ? "text-red-600"
+      : isUrgent
+        ? "text-yellow-600"
+        : "text-gray-900";
   const deadlineSubColor = isTerminalDistressed
     ? "text-red-700"
     : isOverdue
-    ? "text-red-600"
-    : isUrgent
-    ? "text-yellow-600"
-    : "text-gray-600";
+      ? "text-red-600"
+      : isUrgent
+        ? "text-yellow-600"
+        : "text-gray-600";
   const deadlineLabel = isLiquidated
     ? "Collateral was liquidated"
     : isDefaulted
-    ? "Contact support to recover"
-    : isOverdue
-    ? `${Math.abs(daysUntil)} days overdue`
-    : `${daysUntil} days remaining`;
+      ? "Contact support to recover"
+      : isOverdue
+        ? `${Math.abs(daysUntil)} days overdue`
+        : `${daysUntil} days remaining`;
 
   // ── Progress (detailed only) ───────────────────────────────────────────────
   const totalForProgress = loan.principal + loan.accruedInterest;
@@ -150,9 +150,7 @@ export function LoanCard({ loan, variant = "compact" }: LoanCardProps) {
         <div className={`p-4 rounded-lg ${deadlineBg}`}>
           <p className="text-sm text-gray-600 mb-1">Next Payment</p>
           <p
-            className={`${
-              variant === "compact" ? "text-lg" : "text-sm"
-            } font-semibold ${deadlineTextColor}`}
+            className={`${variant === "compact" ? "text-lg" : "text-sm"} font-semibold ${deadlineTextColor}`}
           >
             {formatDate(loan.nextPaymentDeadline)}
           </p>

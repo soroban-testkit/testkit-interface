@@ -195,19 +195,19 @@ export function LendPageClient() {
               sseStatus === "connected"
                 ? "bg-green-50 text-green-700 dark:bg-green-500/10 dark:text-green-400"
                 : sseStatus === "connecting"
-                ? "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
-                : sseStatus === "polling"
-                ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
-                : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
+                  ? "bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400"
+                  : sseStatus === "polling"
+                    ? "bg-amber-50 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300"
+                    : "bg-red-50 text-red-600 dark:bg-red-500/10 dark:text-red-400"
             }`}
             title={
               sseStatus === "connected"
                 ? "Live pool updates connected"
                 : sseStatus === "connecting"
-                ? "Connecting to live updates…"
-                : sseStatus === "polling"
-                ? "Live updates dropped — polling while reconnecting"
-                : "Live updates disconnected — retrying"
+                  ? "Connecting to live updates…"
+                  : sseStatus === "polling"
+                    ? "Live updates dropped — polling while reconnecting"
+                    : "Live updates disconnected — retrying"
             }
           >
             {sseStatus === "connected" ? (
@@ -218,10 +218,10 @@ export function LendPageClient() {
             {sseStatus === "connected"
               ? "Live"
               : sseStatus === "connecting"
-              ? "Connecting…"
-              : sseStatus === "polling"
-              ? "Reconnecting…"
-              : "Offline"}
+                ? "Connecting…"
+                : sseStatus === "polling"
+                  ? "Reconnecting…"
+                  : "Offline"}
           </div>
         )}
       </header>

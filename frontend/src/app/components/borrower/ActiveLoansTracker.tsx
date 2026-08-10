@@ -38,8 +38,8 @@ export function ActiveLoansTracker({ borrowerAddress }: { borrowerAddress: strin
     filter === "overdue"
       ? loans.filter((l) => l.status === "active" && new Date(l.nextPaymentDeadline) < now)
       : filter === "active"
-      ? loans.filter((l) => l.status === "active")
-      : loans;
+        ? loans.filter((l) => l.status === "active")
+        : loans;
 
   const tabCounts: Record<Filter, number> = {
     active: loans.filter((l) => l.status === "active").length,

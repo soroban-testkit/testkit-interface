@@ -64,16 +64,16 @@ export default function ActivityPage() {
         (loan as { latestEventType?: string }).latestEventType === "LoanExtended"
           ? "Loan Extended"
           : (loan as { latestEventType?: string }).latestEventType === "LoanRefinanced"
-          ? "Loan Refinanced"
-          : loan.status === "repaid"
-          ? "Loan Repaid"
-          : loan.status === "liquidated"
-          ? "Loan Liquidated"
-          : loan.status === "defaulted"
-          ? "Loan Defaulted"
-          : loan.status === "active"
-          ? "Loan Active"
-          : "Loan Request",
+            ? "Loan Refinanced"
+            : loan.status === "repaid"
+              ? "Loan Repaid"
+              : loan.status === "liquidated"
+                ? "Loan Liquidated"
+                : loan.status === "defaulted"
+                  ? "Loan Defaulted"
+                  : loan.status === "active"
+                    ? "Loan Active"
+                    : "Loan Request",
       description: `Loan #${loan.id} — ${loan.currency}`,
       amount: `${loan.status === "repaid" ? "+" : "-"}${formatCurrency(loan.amount)}`,
       timestamp: new Date(loan.createdAt).toISOString(),
@@ -84,10 +84,7 @@ export default function ActivityPage() {
     const remittanceEvents: ActivityItem[] = remittances.map((remittance) => ({
       id: `remittance-${remittance.id}`,
       type: "Remittance",
-      description: `To ${remittance.recipientAddress.slice(
-        0,
-        6,
-      )}...${remittance.recipientAddress.slice(-4)}`,
+      description: `To ${remittance.recipientAddress.slice(0, 6)}...${remittance.recipientAddress.slice(-4)}`,
       amount: `-${formatCurrency(remittance.amount)}`,
       timestamp: new Date(remittance.createdAt).toISOString(),
       status: remittance.status,
@@ -229,10 +226,10 @@ export default function ActivityPage() {
                         item.status === "completed" || item.status === "repaid"
                           ? "bg-green-50 dark:bg-green-500/10"
                           : item.status === "failed" ||
-                            item.status === "defaulted" ||
-                            item.status === "liquidated"
-                          ? "bg-red-50 dark:bg-red-500/10"
-                          : "bg-indigo-50 dark:bg-indigo-500/10"
+                              item.status === "defaulted" ||
+                              item.status === "liquidated"
+                            ? "bg-red-50 dark:bg-red-500/10"
+                            : "bg-indigo-50 dark:bg-indigo-500/10"
                       }`}
                       aria-hidden="true"
                     >
