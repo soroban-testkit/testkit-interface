@@ -125,12 +125,10 @@ describe("useReveal", () => {
 
   it("does not expose the value before the request resolves", async () => {
     let resolveFetch!: (val: unknown) => void;
-    global.fetch = jest.fn(
-      () =>
-        new Promise((resolve) => {
-          resolveFetch = resolve;
-        }),
-    ) as unknown as typeof fetch;
+    const fetchPromise = new Promise((resolve) => {
+      resolveFetch = resolve;
+    });
+    global.fetch = jest.fn(() => fetchPromise) as unknown as typeof fetch;
 
     const { result } = renderHook(() => useReveal(), { wrapper: createWrapper() });
 
