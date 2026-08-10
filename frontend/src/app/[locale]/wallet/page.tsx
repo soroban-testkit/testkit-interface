@@ -123,7 +123,7 @@ function useHorizonPayments(address: string, horizonUrl: string, cursor: string 
       return {
         records,
         nextCursor:
-          records.length === TRANSACTIONS_PER_PAGE ? (lastRecord?.paging_token ?? null) : null,
+          records.length === TRANSACTIONS_PER_PAGE ? lastRecord?.paging_token ?? null : null,
       };
     },
     staleTime: 30_000,
@@ -190,7 +190,7 @@ function BalancesCard({ address, horizonUrl }: { address: string; horizonUrl: st
   } = useHorizonBalances(address, horizonUrl);
 
   function assetLabel(b: HorizonBalance): string {
-    return b.asset_type === "native" ? "XLM" : (b.asset_code ?? "Unknown");
+    return b.asset_type === "native" ? "XLM" : b.asset_code ?? "Unknown";
   }
 
   function formatBalance(b: HorizonBalance): string {
@@ -314,14 +314,14 @@ function TransactionHistoryCard({
 
   function paymentAmount(p: HorizonPayment): string {
     if (!p.amount) return "—";
-    const asset = p.asset_type === "native" ? "XLM" : (p.asset_code ?? "");
+    const asset = p.asset_type === "native" ? "XLM" : p.asset_code ?? "";
     return `${parseFloat(p.amount).toLocaleString("en-US", { maximumFractionDigits: 7 })} ${asset}`;
   }
 
   function exportCsv() {
     const today = new Date().toISOString().split("T")[0];
     const rows = payments.map((p) => {
-      const asset = p.asset_type === "native" ? "XLM" : (p.asset_code ?? "");
+      const asset = p.asset_type === "native" ? "XLM" : p.asset_code ?? "";
       return {
         date: p.created_at,
         type: paymentLabel(p),

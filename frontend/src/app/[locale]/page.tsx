@@ -217,8 +217,8 @@ export default function Home() {
           l.status === "active"
             ? "Loan Active"
             : l.status === "repaid"
-              ? "Loan Repaid"
-              : "Loan Request",
+            ? "Loan Repaid"
+            : "Loan Request",
         desc: `Loan #${l.id} — ${formatCurrency(l.amount)}`,
         amount: l.status === "repaid" ? `+${formatCurrency(l.amount)}` : formatCurrency(l.amount),
         time: new Date(l.createdAt).toLocaleDateString(),

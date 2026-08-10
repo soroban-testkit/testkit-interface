@@ -98,8 +98,8 @@ export function WizardStepper({ steps, currentStep, onStepSelect }: WizardSteppe
                       isCurrent
                         ? "text-indigo-600 dark:text-indigo-400"
                         : isCompleted
-                          ? "text-zinc-700 dark:text-zinc-300"
-                          : "text-zinc-400 dark:text-zinc-500",
+                        ? "text-zinc-700 dark:text-zinc-300"
+                        : "text-zinc-400 dark:text-zinc-500",
                     )}
                   >
                     {step.label}

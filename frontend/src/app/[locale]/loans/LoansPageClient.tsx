@@ -71,8 +71,8 @@ export function LoansPageClient() {
     overdueCount === 0
       ? t("health.strong")
       : overdueCount <= 2
-        ? t("health.watch")
-        : t("health.atRisk");
+      ? t("health.watch")
+      : t("health.atRisk");
 
   if (isLoading) {
     return <LoansListSkeleton />;
