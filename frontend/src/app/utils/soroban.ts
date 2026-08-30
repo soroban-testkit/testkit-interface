@@ -42,7 +42,7 @@ export async function buildUnsignedLoanRequestXdr({
   const server = new rpc.Server(rpcUrl);
   const source = await server.getAccount(borrower);
   const amountScVal = nativeToScVal(BigInt(Math.floor(amount)), { type: "i128" });
-  const termScVal = nativeToScVal(BigInt(term), { type: "u32" });
+  const termScVal = nativeToScVal(term, { type: "u32" });
   const borrowerScVal = new Address(borrower).toScVal();
 
   const tx = new TransactionBuilder(source, {
