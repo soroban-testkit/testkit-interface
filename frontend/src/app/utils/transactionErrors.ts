@@ -180,11 +180,12 @@ export function mapTransactionError(error: unknown): TransactionErrorDetails {
   };
 }
 
-async function fetchTransactionStatus(
+export async function fetchTransactionStatus(
   txHash: string,
   horizonUrl: string,
+  signal?: AbortSignal,
 ): Promise<"pending" | "success" | "failed"> {
-  const response = await fetch(`${horizonUrl}/transactions/${txHash}`);
+  const response = await fetch(`${horizonUrl}/transactions/${txHash}`, { signal });
 
   if (response.status === 404) {
     return "pending";
@@ -196,6 +197,24 @@ async function fetchTransactionStatus(
 
   const payload = (await response.json()) as { successful?: boolean };
   return payload.successful ? "success" : "failed";
+}
+
+function delay(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve) => {
+    if (signal?.aborted) {
+      resolve();
+      return;
+    }
+    const timer = setTimeout(resolve, ms);
+    signal?.addEventListener(
+      "abort",
+      () => {
+        clearTimeout(timer);
+        resolve();
+      },
+      { once: true },
+    );
+  });
 }
 
 export async function pollTransactionStatus(
@@ -217,17 +236,28 @@ export async function pollTransactionStatus(
       };
     }
 
-    const status = await fetchTransactionStatus(txHash, horizonUrl);
+    try {
+      const status = await fetchTransactionStatus(txHash, horizonUrl, signal);
 
-    if (status === "success") {
-      return { status: "success", message: "Transaction confirmed on-chain." };
+      if (status === "success") {
+        return { status: "success", message: "Transaction confirmed on-chain." };
+      }
+
+      if (status === "failed") {
+        return { status: "failed", message: "Transaction failed on-chain." };
+      }
+    } catch {
+      if (signal?.aborted) {
+        return {
+          status: "cancelled",
+          message: "Status tracking cancelled by user.",
+        };
+      }
+      // Tolerate transient network or Horizon errors (e.g. 429, 500, 502, network failure)
+      // and continue polling until timeoutMs.
     }
 
-    if (status === "failed") {
-      return { status: "failed", message: "Transaction failed on-chain." };
-    }
-
-    await new Promise((resolve) => setTimeout(resolve, intervalMs));
+    await delay(intervalMs, signal);
   }
 
   return {
