@@ -1602,7 +1602,7 @@ export function useRepayLoan() {
           return {
             ...old,
             totalOwed: newOwed,
-            totalRepaid: old.totalRepaid - amount,
+            totalRepaid: old.totalRepaid + amount,
             status: newOwed <= 0 ? ("repaid" as const) : old.status,
           };
         },
@@ -1734,13 +1734,13 @@ export function useWithdrawFromPool() {
   return useMutation<
     { unsignedTxXdr: string; networkPassphrase: string },
     Error,
-    { amount: number; depositorAddress: string; token: string },
+    { amount: number; depositorAddress: string; token: string; minAssetsOut?: number },
     WithdrawContext
   >({
-    mutationFn: ({ amount, depositorAddress, token }) =>
+    mutationFn: ({ amount, depositorAddress, token, minAssetsOut }) =>
       apiFetch<{ unsignedTxXdr: string; networkPassphrase: string }>("/pool/build-withdraw", {
         method: "POST",
-        body: JSON.stringify({ amount, depositorPublicKey: depositorAddress, token }),
+        body: JSON.stringify({ amount, depositorPublicKey: depositorAddress, token, minAssetsOut }),
       }),
 
     onMutate: async ({ amount, depositorAddress }) => {
@@ -1757,7 +1757,7 @@ export function useWithdrawFromPool() {
       // Optimistically update pool stats
       queryClient.setQueryData(queryKeys.pool.stats(), (old: PoolStats | undefined) => {
         if (!old) return old;
-        return { ...old, totalDeposits: Math.max(0, old.totalDeposits + amount) };
+        return { ...old, totalDeposits: Math.max(0, old.totalDeposits - amount) };
       });
 
       // Optimistically update depositor portfolio

@@ -42,7 +42,7 @@ export async function buildUnsignedLoanRequestXdr({
   const server = new rpc.Server(rpcUrl);
   const source = await server.getAccount(borrower);
   const amountScVal = nativeToScVal(BigInt(Math.floor(amount)), { type: "i128" });
-  const termScVal = nativeToScVal(BigInt(term), { type: "u32" });
+  const termScVal = nativeToScVal(term, { type: "u32" });
   const borrowerScVal = new Address(borrower).toScVal();
 
   const tx = new TransactionBuilder(source, {
@@ -55,7 +55,7 @@ export async function buildUnsignedLoanRequestXdr({
           new xdr.InvokeContractArgs({
             contractAddress: Address.fromString(contractId).toScAddress(),
             functionName: "request_loan",
-            args: [borrowerScVal, termScVal, amountScVal],
+            args: [borrowerScVal, amountScVal, termScVal],
           }),
         ),
         auth: [],
@@ -81,7 +81,7 @@ export async function buildUnsignedRepaymentXdr({
 
   const borrowerScVal = new Address(borrower).toScVal();
   const loanIdScVal = nativeToScVal(BigInt(loanId), { type: "u64" });
-  const amountScVal = nativeToScVal(BigInt(Math.floor(amount / 10)), { type: "i128" });
+  const amountScVal = nativeToScVal(BigInt(Math.floor(amount)), { type: "i128" });
 
   const tx = new TransactionBuilder(source, {
     fee: "10000",
@@ -93,7 +93,7 @@ export async function buildUnsignedRepaymentXdr({
           new xdr.InvokeContractArgs({
             contractAddress: Address.fromString(contractId).toScAddress(),
             functionName: "repay",
-            args: [borrowerScVal, amountScVal, loanIdScVal],
+            args: [borrowerScVal, loanIdScVal, amountScVal],
           }),
         ),
         auth: [],
