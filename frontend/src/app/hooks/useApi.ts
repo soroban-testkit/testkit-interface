@@ -1734,13 +1734,13 @@ export function useWithdrawFromPool() {
   return useMutation<
     { unsignedTxXdr: string; networkPassphrase: string },
     Error,
-    { amount: number; depositorAddress: string; token: string },
+    { amount: number; depositorAddress: string; token: string; minAssetsOut?: number },
     WithdrawContext
   >({
-    mutationFn: ({ amount, depositorAddress, token }) =>
+    mutationFn: ({ amount, depositorAddress, token, minAssetsOut }) =>
       apiFetch<{ unsignedTxXdr: string; networkPassphrase: string }>("/pool/build-withdraw", {
         method: "POST",
-        body: JSON.stringify({ amount, depositorPublicKey: depositorAddress, token }),
+        body: JSON.stringify({ amount, depositorPublicKey: depositorAddress, token, minAssetsOut }),
       }),
 
     onMutate: async ({ amount, depositorAddress }) => {
