@@ -1,37 +1,20 @@
 import { test, expect } from "@playwright/test";
-import { injectAxe, checkA11y, getViolations } from "axe-playwright";
-import type { Result } from "axe-core";
+import { injectAxe, checkA11y } from "axe-playwright";
 
-test.describe("Accessibility", () => {
+test.describe("Accessibility audit", () => {
   test("landing page has no critical a11y violations", async ({ page }) => {
-    await page.goto("/en");
+    await page.goto("/");
     await injectAxe(page);
-
-    await checkA11y(page, undefined, {
-      axeOptions: {
-        runOnly: {
-          type: "tag",
-          values: ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"],
-        },
-      },
-      includedImpacts: ["critical", "serious"],
-      detailedReport: false,
-    });
-  });
-
-  test("returns violation list programmatically for landing page", async ({ page }) => {
-    await page.goto("/en");
-    await injectAxe(page);
-
-    const violations: Result[] = await getViolations(page, undefined, {
+    const results = await checkA11y(page, undefined, {
       runOnly: {
         type: "tag",
-        values: ["wcag2a", "wcag2aa"],
+        values: ["wcag2a", "wcag2aa", "best-practice"],
       },
     });
 
-    for (const v of violations) {
-      expect.soft(v.impact, `Rule ${v.id} impact`).not.toBe("critical");
-    }
+    const critical = results.violations.filter(
+      (v) => v.impact === "critical" || v.impact === "serious",
+    );
+    expect(critical, `Found ${critical.length} critical/serious a11y violations`).toEqual([]);
   });
 });
