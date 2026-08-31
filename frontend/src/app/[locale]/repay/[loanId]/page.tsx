@@ -91,6 +91,7 @@ export default function RepayLoanPage() {
         loanId,
         amount: amountNumber,
         contractId,
+        decimals,
       });
 
       txPreview.show(
