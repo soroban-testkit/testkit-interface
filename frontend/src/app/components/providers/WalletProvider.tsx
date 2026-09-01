@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { TokenBalance, WalletNetwork, WalletStatus } from "../../stores/useWalletStore";
 import { useWalletStore } from "../../stores/useWalletStore";
+import { getNetworkPassphrase } from "../../utils/networkPassphrase";
 
 type FreighterApi = typeof import("@stellar/freighter-api");
 
@@ -59,13 +60,6 @@ const NETWORK_CHAIN_IDS: Record<string, number> = {
   TESTNET: 2,
   FUTURENET: 3,
   STANDALONE: 4,
-};
-
-const NETWORK_PASSPHRASES: Record<string, string> = {
-  PUBLIC: "Public Global Stellar Network ; October 2015",
-  TESTNET: "Test SDF Network ; September 2015",
-  FUTURENET: "Test SDF Future Network ; October 2022",
-  STANDALONE: "Standalone Network ; Separate from SDF",
 };
 
 function normalizeWalletError(error: unknown): string {
@@ -251,8 +245,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
   ): Promise<string> {
     const api = (await loadFreighterApi()) as unknown as ExtendedFreighterApi;
     const networkName = useWalletStore.getState().network?.name ?? "TESTNET";
-    const networkPassphrase =
-      options?.networkPassphrase ?? NETWORK_PASSPHRASES[networkName] ?? NETWORK_PASSPHRASES.TESTNET;
+    const networkPassphrase = options?.networkPassphrase ?? getNetworkPassphrase(networkName);
 
     const result = await api.signTransaction(unsignedTxXdr, {
       networkPassphrase,
