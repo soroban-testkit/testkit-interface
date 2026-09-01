@@ -55,11 +55,8 @@ export function useRepaymentOperation(options?: {
   const transaction = useTransaction(transactionId);
   const [error, setError] = useState<string | null>(null);
   const repayLoan = useRepayLoan();
-  const queryClient = useQueryClient();
   const { signTransaction } = useWallet();
-  const queryClient = useQueryClient();
   const isExecuting = useRef(false);
-  const queryClient = useQueryClient();
 
   const executeRepayment = useCallback(
     async ({
