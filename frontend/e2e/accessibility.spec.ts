@@ -12,9 +12,9 @@ test.describe("Accessibility audit", () => {
         values: ["wcag2a", "wcag2aa", "best-practice"],
       },
     };
-    const results = await getViolations(page, undefined, options);
+    const violations = await getViolations(page, undefined, options);
 
-    const critical = results.filter(
+    const critical = violations.filter(
       (v): v is NonNullable<typeof v.impact> extends never ? never : typeof v =>
         v.impact === "critical" || v.impact === "serious",
     );
