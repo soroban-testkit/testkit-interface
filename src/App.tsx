@@ -23,6 +23,15 @@ export default function App() {
     [command, path, format, open, fn, ramp, strict],
   );
 
+  const handleReset = () => {
+    setPath(".");
+    setFormat("html");
+    setOpen(true);
+    setFn("batch_payout");
+    setRamp("recipients");
+    setStrict(true);
+  };
+
   const copy = async () => {
     await copyToClipboard(generated);
     setCopied(true);
@@ -94,11 +103,34 @@ export default function App() {
           </>}
           {command === "limits" && <div className="row"><label>Function<input value={fn} onChange={(event) => setFn(event.target.value)} /></label><label>Ramp parameter<input value={ramp} onChange={(event) => setRamp(event.target.value)} /></label></div>}
           {command === "audit" && <label className="check"><input type="checkbox" checked={strict} onChange={(event) => setStrict(event.target.checked)} /> Fail on warnings</label>}
-          <div className="output"><code>{generated}</code><button onClick={copy}>{copied ? "Copied" : "Copy"}</button></div>
+          <div className="output">
+            <code>{generated}</code>
+            <div className="output-actions">
+              <button type="button" className="button-reset" onClick={handleReset}>Reset</button>
+              <button type="button" onClick={copy}>{copied ? "Copied" : "Copy"}</button>
+            </div>
+          </div>
         </div>
       </section>
 
-      <footer><span>Built for the Stellar developer ecosystem.</span><span>Apache-2.0</span></footer>
+      <footer>
+        <div className="footer-col">
+          <span className="footer-brand">Soroban Testkit</span>
+          <p>Built for the Stellar developer ecosystem.</p>
+        </div>
+        <div className="footer-col">
+          <span className="footer-heading">Workflows</span>
+          <div className="footer-links">
+            <a href="#modules">Modules</a>
+            <a href="#commands">CLI Workbench</a>
+            <a href="https://github.com/soroban-testkit/testkit-blockchain">Core Testkit ↗</a>
+          </div>
+        </div>
+        <div className="footer-col footer-meta">
+          <span>Apache-2.0</span>
+          <span>Deterministic contract testing</span>
+        </div>
+      </footer>
     </main>
   );
 }
