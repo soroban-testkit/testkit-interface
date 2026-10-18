@@ -19,10 +19,10 @@ test.describe("landing page visual regression", () => {
 
     await expect(commands).toHaveScreenshot("commands-coverage.png");
 
-    await page.getByRole("button", { name: "limits" }).click();
+    await page.getByRole("tab", { name: "limits" }).click();
     await expect(commands).toHaveScreenshot("commands-limits.png");
 
-    await page.getByRole("button", { name: "audit" }).click();
+    await page.getByRole("tab", { name: "audit" }).click();
     await expect(commands).toHaveScreenshot("commands-audit.png");
   });
 

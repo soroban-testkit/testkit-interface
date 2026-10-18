@@ -54,3 +54,58 @@ export function buildCommand(options: CommandOptions): string {
     .filter(Boolean)
     .join(" ");
 }
+
+export const DEFAULT_OPTIONS: Record<CommandName, CommandOptions> = {
+  coverage: {
+    command: "coverage",
+    path: ".",
+    format: "html",
+    open: true,
+    fn: "batch_payout",
+    ramp: "recipients",
+    strict: true,
+  },
+  limits: {
+    command: "limits",
+    path: "target/wasm32v1-none/release/contract.wasm",
+    format: "html",
+    open: true,
+    fn: "batch_payout",
+    ramp: "recipients",
+    strict: true,
+  },
+  audit: {
+    command: "audit",
+    path: "./src",
+    format: "text",
+    open: false,
+    fn: "batch_payout",
+    ramp: "recipients",
+    strict: true,
+  },
+};
+
+export function validateCommandInputs(options: CommandOptions): Record<string, string> {
+  const errors: Record<string, string> = {};
+
+  if (!options.path || options.path.trim() === "") {
+    errors.path = "Project or contract path cannot be empty.";
+  }
+
+  if (options.command === "limits") {
+    if (!options.fn || options.fn.trim() === "") {
+      errors.fn = "Function name cannot be empty.";
+    } else if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(options.fn.trim())) {
+      errors.fn = "Function name must be a valid Rust identifier (e.g. batch_payout).";
+    }
+
+    if (!options.ramp || options.ramp.trim() === "") {
+      errors.ramp = "Ramp parameter cannot be empty.";
+    } else if (!/^[a-zA-Z_][a-zA-Z0-9_]*$/.test(options.ramp.trim())) {
+      errors.ramp = "Ramp parameter must be a valid Rust identifier (e.g. recipients).";
+    }
+  }
+
+  return errors;
+}
+

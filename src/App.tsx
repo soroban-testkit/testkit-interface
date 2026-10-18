@@ -1,5 +1,11 @@
 import { useMemo, useState } from "react";
-import { buildCommand, modules, type CommandName } from "./testkit";
+import {
+  buildCommand,
+  DEFAULT_OPTIONS,
+  modules,
+  validateCommandInputs,
+  type CommandName,
+} from "./testkit";
 import { copyToClipboard } from "./clipboard";
 
 const descriptions: Record<CommandName, string> = {
@@ -7,6 +13,8 @@ const descriptions: Record<CommandName, string> = {
   limits: "Ramp a contract input to find its practical resource ceiling.",
   audit: "Scan contract sources for common auth, arithmetic, and TTL risks.",
 };
+
+const COMMANDS: CommandName[] = ["coverage", "limits", "audit"];
 
 export default function App() {
   const [command, setCommand] = useState<CommandName>("coverage");
@@ -16,17 +24,85 @@ export default function App() {
   const [fn, setFn] = useState("batch_payout");
   const [ramp, setRamp] = useState("recipients");
   const [strict, setStrict] = useState(true);
-  const [copied, setCopied] = useState(false);
+  const [copyStatus, setCopyStatus] = useState<"idle" | "success" | "error">("idle");
+  const [announcement, setAnnouncement] = useState("");
 
   const generated = useMemo(
     () => buildCommand({ command, path, format, open, fn, ramp, strict }),
     [command, path, format, open, fn, ramp, strict],
   );
 
+  const errors = useMemo(
+    () => validateCommandInputs({ command, path, format, open, fn, ramp, strict }),
+    [command, path, format, open, fn, ramp, strict],
+  );
+
+  const hasErrors = Object.keys(errors).length > 0;
+
+  const handleTabChange = (nextCommand: CommandName) => {
+    setCommand(nextCommand);
+    setCopyStatus("idle");
+  };
+
+  const handleTabKeyDown = (
+    event: React.KeyboardEvent<HTMLButtonElement>,
+    current: CommandName,
+  ) => {
+    const currentIndex = COMMANDS.indexOf(current);
+    let nextIndex: number | null = null;
+
+    if (event.key === "ArrowRight" || event.key === "ArrowDown") {
+      nextIndex = (currentIndex + 1) % COMMANDS.length;
+    } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") {
+      nextIndex = (currentIndex - 1 + COMMANDS.length) % COMMANDS.length;
+    } else if (event.key === "Home") {
+      nextIndex = 0;
+    } else if (event.key === "End") {
+      nextIndex = COMMANDS.length - 1;
+    }
+
+    if (nextIndex !== null) {
+      event.preventDefault();
+      const nextCommand = COMMANDS[nextIndex];
+      handleTabChange(nextCommand);
+      const nextButton = document.getElementById(`tab-${nextCommand}`);
+      nextButton?.focus();
+    }
+  };
+
+  const handleReset = () => {
+    const defaults = DEFAULT_OPTIONS[command];
+    setPath(defaults.path);
+    setFormat(defaults.format);
+    setOpen(defaults.open);
+    setFn(defaults.fn);
+    setRamp(defaults.ramp);
+    setStrict(defaults.strict);
+    setCopyStatus("idle");
+    setAnnouncement(`Reset ${command} configuration to default settings`);
+  };
+
   const copy = async () => {
-    await copyToClipboard(generated);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
+    if (hasErrors) {
+      return;
+    }
+
+    try {
+      await copyToClipboard(generated);
+      setCopyStatus("success");
+      setAnnouncement("Command copied to clipboard");
+      window.setTimeout(() => {
+        setCopyStatus("idle");
+        setAnnouncement("");
+      }, 1600);
+    } catch {
+      setCopyStatus("error");
+      setAnnouncement("Failed to copy command to clipboard");
+      window.setTimeout(() => {
+        setCopyStatus("idle");
+        setAnnouncement("");
+      }, 2000);
+    }
   };
 
   return (
@@ -79,22 +155,143 @@ export default function App() {
           <p className="eyebrow">CLI workbench</p>
           <h2>From intent to command.</h2>
           <p>Configure a supported Testkit workflow and copy the exact command to your terminal.</p>
-          <div className="command-tabs" role="tablist">
-            {(["coverage", "limits", "audit"] as const).map((name) => (
-              <button key={name} className={command === name ? "active" : ""} onClick={() => setCommand(name)}>{name}</button>
+          <div className="command-tabs" role="tablist" aria-label="CLI commands">
+            {COMMANDS.map((name) => (
+              <button
+                key={name}
+                id={`tab-${name}`}
+                role="tab"
+                aria-selected={command === name}
+                aria-controls={`panel-${name}`}
+                tabIndex={command === name ? 0 : -1}
+                className={command === name ? "active" : ""}
+                onClick={() => handleTabChange(name)}
+                onKeyDown={(event) => handleTabKeyDown(event, name)}
+              >
+                {name}
+              </button>
             ))}
           </div>
           <p className="description">{descriptions[command]}</p>
         </div>
-        <div className="builder">
-          <label>Project or contract path<input value={path} onChange={(event) => setPath(event.target.value)} /></label>
-          {command === "coverage" && <>
-            <label>Report format<select value={format} onChange={(event) => setFormat(event.target.value as typeof format)}><option>html</option><option>lcov</option><option>text</option></select></label>
-            <label className="check"><input type="checkbox" checked={open} onChange={(event) => setOpen(event.target.checked)} /> Open report when complete</label>
-          </>}
-          {command === "limits" && <div className="row"><label>Function<input value={fn} onChange={(event) => setFn(event.target.value)} /></label><label>Ramp parameter<input value={ramp} onChange={(event) => setRamp(event.target.value)} /></label></div>}
-          {command === "audit" && <label className="check"><input type="checkbox" checked={strict} onChange={(event) => setStrict(event.target.checked)} /> Fail on warnings</label>}
-          <div className="output"><code>{generated}</code><button onClick={copy}>{copied ? "Copied" : "Copy"}</button></div>
+        <div
+          className="builder"
+          role="tabpanel"
+          id={`panel-${command}`}
+          aria-labelledby={`tab-${command}`}
+          tabIndex={0}
+        >
+          <div className="field">
+            <label htmlFor="builder-path">Project or contract path</label>
+            <input
+              id="builder-path"
+              value={path}
+              onChange={(event) => setPath(event.target.value)}
+              aria-invalid={Boolean(errors.path)}
+              aria-describedby={errors.path ? "error-path" : undefined}
+            />
+            {errors.path && (
+              <span id="error-path" className="field-error" role="alert">
+                {errors.path}
+              </span>
+            )}
+          </div>
+
+          {command === "coverage" && (
+            <>
+              <div className="field">
+                <label htmlFor="builder-format">Report format</label>
+                <select
+                  id="builder-format"
+                  value={format}
+                  onChange={(event) => setFormat(event.target.value as typeof format)}
+                >
+                  <option value="html">html</option>
+                  <option value="lcov">lcov</option>
+                  <option value="text">text</option>
+                </select>
+              </div>
+              <label className="check" htmlFor="builder-open">
+                <input
+                  id="builder-open"
+                  type="checkbox"
+                  checked={open}
+                  onChange={(event) => setOpen(event.target.checked)}
+                />
+                <span>Open report when complete</span>
+              </label>
+            </>
+          )}
+
+          {command === "limits" && (
+            <div className="row">
+              <div className="field">
+                <label htmlFor="builder-fn">Function</label>
+                <input
+                  id="builder-fn"
+                  value={fn}
+                  onChange={(event) => setFn(event.target.value)}
+                  aria-invalid={Boolean(errors.fn)}
+                  aria-describedby={errors.fn ? "error-fn" : undefined}
+                />
+                {errors.fn && (
+                  <span id="error-fn" className="field-error" role="alert">
+                    {errors.fn}
+                  </span>
+                )}
+              </div>
+              <div className="field">
+                <label htmlFor="builder-ramp">Ramp parameter</label>
+                <input
+                  id="builder-ramp"
+                  value={ramp}
+                  onChange={(event) => setRamp(event.target.value)}
+                  aria-invalid={Boolean(errors.ramp)}
+                  aria-describedby={errors.ramp ? "error-ramp" : undefined}
+                />
+                {errors.ramp && (
+                  <span id="error-ramp" className="field-error" role="alert">
+                    {errors.ramp}
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
+          {command === "audit" && (
+            <label className="check" htmlFor="builder-strict">
+              <input
+                id="builder-strict"
+                type="checkbox"
+                checked={strict}
+                onChange={(event) => setStrict(event.target.checked)}
+              />
+              <span>Fail on warnings</span>
+            </label>
+          )}
+
+          <div className="output">
+            <code>{generated}</code>
+            <button
+              type="button"
+              className="button-reset"
+              onClick={handleReset}
+            >
+              Reset
+            </button>
+            <button
+              type="button"
+              className={copyStatus === "error" ? "error" : ""}
+              onClick={copy}
+              disabled={hasErrors}
+              aria-disabled={hasErrors}
+            >
+              {copyStatus === "success" ? "Copied" : copyStatus === "error" ? "Failed" : "Copy"}
+            </button>
+          </div>
+          <div className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+            {announcement}
+          </div>
         </div>
       </section>
 
