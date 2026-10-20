@@ -767,6 +767,52 @@ describe("Footer changelog link", () => {
   });
 });
 
+// #96 — skip-to-main-content link visible on focus
+describe("Skip-to-main-content link (#96)", () => {
+  it("carries the skip-link class so the CSS can show it on focus", () => {
+    render(<App />);
+    const skipLink = screen.getByRole("link", { name: "Skip to main content" });
+    expect(skipLink).toHaveClass("skip-link");
+  });
+});
+
+// #97 — audit command reference section
+describe("Audit command reference (#97)", () => {
+  it("renders a focusable audit-reference section", () => {
+    render(<App />);
+    expect(document.getElementById("audit-reference")).toHaveAttribute("tabindex", "-1");
+    expect(screen.getByRole("heading", { name: /audit workflow, at a glance/i })).toBeInTheDocument();
+  });
+
+  it("exposes the audit reference as a navigation link", () => {
+    render(<App />);
+    const link = screen.getByRole("link", { name: "Audit reference" });
+    expect(link).toHaveAttribute("href", "#audit-reference");
+  });
+
+  it("documents the ready-to-run command and its arguments", () => {
+    render(<App />);
+    expect(screen.getByLabelText("Audit command example")).toHaveTextContent("soroban-testkit audit");
+    expect(screen.getAllByText("--strict").length).toBeGreaterThan(0);
+  });
+});
+
+// #99 — accessible description for the generated command output
+describe("Generated command output accessibility (#99)", () => {
+  it("wraps the output in a named region", () => {
+    render(<App />);
+    expect(screen.getByRole("region", { name: "Generated command output" })).toBeInTheDocument();
+  });
+
+  it("includes a visually-hidden description within the output region", () => {
+    render(<App />);
+    const region = screen.getByRole("region", { name: "Generated command output" });
+    const desc = document.getElementById(region.getAttribute("aria-describedby") ?? "");
+    expect(desc).toBeInTheDocument();
+    expect(desc?.textContent).toMatch(/copy this command/i);
+  });
+});
+
 // #116 — accessibility statement
 describe("Accessibility statement", () => {
   it("renders the accessibility link in the footer", () => {
