@@ -326,7 +326,11 @@ export default function App() {
   const [categoryFilter, setCategoryFilter] = useState<ModuleCategory | null>(null);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  // #102 — validation errors announced via live region
+  const [validationError, setValidationError] = useState("");
   const moduleSearchRef = useRef<HTMLInputElement>(null);
+  // #101 — focus the command section heading after a mode switch
+  const commandHeadingRef = useRef<HTMLHeadingElement>(null);
 
   // Resetting from the empty state removes the button that had focus, so move
   // focus back to the search box instead of dropping it to <body> (#123).
@@ -592,7 +596,7 @@ export default function App() {
     window.setTimeout(() => {
       setCopied(false);
       setAnnouncement("");
-    }, 1600);
+    }, 3000);
   };
 
   // Issue #144: Copy command with explanatory comments
@@ -605,7 +609,7 @@ export default function App() {
     window.setTimeout(() => {
       setCopiedWithComments(false);
       setAnnouncement("");
-    }, 1600);
+    }, 3000);
   };
 
   // Issue #145: Copy command as reusable shell script
@@ -618,7 +622,7 @@ export default function App() {
     window.setTimeout(() => {
       setCopiedAsScript(false);
       setAnnouncement("");
-    }, 1600);
+    }, 3000);
   };
 
   const copyStep = async (index: number, stepCommand: string) => {
@@ -628,7 +632,7 @@ export default function App() {
     window.setTimeout(() => {
       setCopiedStep(null);
       setAnnouncement("");
-    }, 1600);
+    }, 3000);
   };
 
   // #146 — download generated command as shell script
@@ -682,6 +686,36 @@ export default function App() {
     }
   };
 
+  // #101 — move focus to the command section heading when the workflow tab changes
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    commandHeadingRef.current?.focus();
+  }, [command]);
+
+  // #102 — validate required fields and announce errors
+  const validateAndCopy = async () => {
+    if (!path.trim()) {
+      setValidationError("Project or contract path is required.");
+      return;
+    }
+    if (command === "limits") {
+      if (!fn.trim()) {
+        setValidationError("Function name is required.");
+        return;
+      }
+      if (!ramp.trim()) {
+        setValidationError("Ramp parameter is required.");
+        return;
+      }
+    }
+    setValidationError("");
+    await copy();
+  };
+
   const fieldClasses = "field-input";
 
   return (
@@ -691,6 +725,10 @@ export default function App() {
       </a>
       <p className="sr-only" aria-live="polite">
         {announcement}
+      </p>
+      {/* #102 — validation errors announced via assertive live region */}
+      <p className="sr-only" aria-live="assertive" role="alert">
+        {validationError}
       </p>
       <nav aria-label="Main navigation">
         <a className="brand" href="#top" aria-label="Soroban Testkit home">
@@ -1227,7 +1265,8 @@ export default function App() {
       <section className="commands" id="commands" tabIndex={-1}>
         <div className="command-copy">
           <p className="eyebrow">CLI workbench</p>
-          <h2>From intent to command.</h2>
+          {/* #101 — heading receives focus after workflow tab switch */}
+          <h2 ref={commandHeadingRef} tabIndex={-1}>From intent to command.</h2>
           <p>Configure a supported Testkit workflow and copy the exact command to your terminal.</p>
           <div className="command-tabs" role="group" aria-label="Command workflow selector">
             {(["coverage", "limits", "audit"] as const).map((name) => (
@@ -1300,13 +1339,18 @@ export default function App() {
               <span>Project or contract path</span>
               <span className="badge badge-required">Required</span>
             </div>
+            {/* #100 — inline help text associated with the field */}
+            <div id="path-help" className="field-help">
+              Path to the contract workspace or source directory, such as . or ./contracts/token.
+            </div>
             <div className="field-with-clear">
               <input
                 className={fieldClasses}
                 value={path}
-                onChange={(event) => setPath(event.target.value)}
+                onChange={(event) => { setPath(event.target.value); if (event.target.value.trim()) setValidationError(""); }}
                 aria-label="Project or contract path"
                 aria-required="true"
+                aria-describedby="path-help"
               />
               {path && (
                 <button
@@ -1364,7 +1408,11 @@ export default function App() {
                   <span>Report format</span>
                   <span className="badge badge-optional">Optional</span>
                 </div>
-                <select value={format} onChange={(event) => setFormat(event.target.value as typeof format)}>
+                {/* #100 — inline help text for format field */}
+                <div id="format-help" className="field-help">
+                  html opens in a browser; lcov feeds into CI coverage tools; text prints to stdout.
+                </div>
+                <select value={format} onChange={(event) => setFormat(event.target.value as typeof format)} aria-describedby="format-help">
                   <option>html</option>
                   <option>lcov</option>
                   <option>text</option>
@@ -1372,10 +1420,14 @@ export default function App() {
               </label>
               <label className="check">
                 <span className="check-content">
-                  <input type="checkbox" checked={open} onChange={(event) => setOpen(event.target.checked)} />
+                  {/* #100 — inline help text for open checkbox */}
+                  <input type="checkbox" checked={open} onChange={(event) => setOpen(event.target.checked)} aria-describedby="open-help" />
                   <span>Open report when complete</span>
                 </span>
                 <span className="badge badge-optional">Optional</span>
+                <div id="open-help" className="field-help">
+                  Automatically launches the HTML report in your default browser after generation.
+                </div>
               </label>
             </>
           )}
@@ -1393,7 +1445,7 @@ export default function App() {
                   <input
                     className={fieldClasses}
                     value={fn}
-                    onChange={(event) => setFn(event.target.value)}
+                    onChange={(event) => { setFn(event.target.value); if (event.target.value.trim()) setValidationError(""); }}
                     aria-label="Function"
                     aria-required="true"
                     aria-describedby="fn-help"
@@ -1422,7 +1474,7 @@ export default function App() {
                   <input
                     className={fieldClasses}
                     value={ramp}
-                    onChange={(event) => setRamp(event.target.value)}
+                    onChange={(event) => { setRamp(event.target.value); if (event.target.value.trim()) setValidationError(""); }}
                     aria-label="Ramp parameter"
                     aria-required="true"
                     aria-describedby="ramp-help"
@@ -1444,10 +1496,14 @@ export default function App() {
           {command === "audit" && (
             <label className="check">
               <span className="check-content">
-                <input type="checkbox" checked={strict} onChange={(event) => setStrict(event.target.checked)} />
+                {/* #100 — inline help text for strict checkbox */}
+                <input type="checkbox" checked={strict} onChange={(event) => setStrict(event.target.checked)} aria-describedby="strict-help" />
                 <span>Fail on warnings</span>
               </span>
               <span className="badge badge-optional">Optional</span>
+              <div id="strict-help" className="field-help">
+                When enabled, the audit command exits with a non-zero status if any warnings are found.
+              </div>
             </label>
           )}
 
@@ -1456,7 +1512,11 @@ export default function App() {
               <span>Shell target</span>
               <span className="badge badge-optional">Optional</span>
             </div>
-            <select value={shell} onChange={(event) => setShell(event.target.value as typeof shell)}>
+            {/* #100 — inline help text for shell select */}
+            <div id="shell-help" className="field-help">
+              Adjusts quoting and syntax so the generated command is valid for your shell.
+            </div>
+            <select value={shell} onChange={(event) => setShell(event.target.value as typeof shell)} aria-describedby="shell-help">
               <option value="bash">Bash</option>
               <option value="zsh">Zsh</option>
               <option value="fish">Fish</option>
@@ -1497,7 +1557,7 @@ export default function App() {
 
           <div className="output">
             <code data-testid="command-output">{highlightCommand(generated)}</code>
-            <button onClick={copy}>{copied ? "Copied" : "Copy"}</button>
+            <button onClick={validateAndCopy}>{copied ? "Copied" : "Copy"}</button>
             {/* #146 — download action for generated shell script */}
             <button onClick={downloadCommand} className="button-download" aria-label="Download command as shell script">
               Download
