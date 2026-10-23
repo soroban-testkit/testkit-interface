@@ -65,6 +65,96 @@ describe("App command copy", () => {
   });
 });
 
+describe("Reset behavior after customized inputs (#205)", () => {
+  it("resets coverage inputs back to defaults after customization", () => {
+    render(<App />);
+
+    const pathInput = screen.getByLabelText("Project or contract path") as HTMLInputElement;
+    const formatSelect = screen.getByLabelText(/report format/i) as HTMLSelectElement;
+    const openCheckbox = screen.getByLabelText(/open report when complete/i) as HTMLInputElement;
+
+    fireEvent.change(pathInput, { target: { value: "./contracts/escrow" } });
+    fireEvent.change(formatSelect, { target: { value: "lcov" } });
+    fireEvent.click(openCheckbox); // uncheck
+
+    expect(screen.getByTestId("command-output")).toHaveTextContent(
+      "soroban-testkit coverage ./contracts/escrow --format lcov",
+    );
+
+    const resetButton = screen.getByRole("button", { name: "Reset" });
+    fireEvent.click(resetButton);
+
+    expect(pathInput.value).toBe(".");
+    expect(formatSelect.value).toBe("html");
+    expect(openCheckbox.checked).toBe(true);
+    expect(screen.getByTestId("command-output")).toHaveTextContent(
+      "soroban-testkit coverage . --format html --open",
+    );
+  });
+
+  it("resets limits inputs back to defaults after customization", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "limits" }));
+
+    const pathInput = screen.getByLabelText("Project or contract path") as HTMLInputElement;
+    const fnInput = screen.getByLabelText("Function") as HTMLInputElement;
+    const rampInput = screen.getByLabelText("Ramp parameter") as HTMLInputElement;
+
+    fireEvent.change(pathInput, { target: { value: "./custom.wasm" } });
+    fireEvent.change(fnInput, { target: { value: "custom_fn" } });
+    fireEvent.change(rampInput, { target: { value: "custom_ramp" } });
+
+    expect(screen.getByTestId("command-output")).toHaveTextContent(
+      "soroban-testkit limits --contract ./custom.wasm --fn custom_fn --ramp custom_ramp",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+
+    expect(pathInput.value).toBe(".");
+    expect(fnInput.value).toBe("batch_payout");
+    expect(rampInput.value).toBe("recipients");
+    expect(screen.getByTestId("command-output")).toHaveTextContent(
+      "soroban-testkit limits --contract . --fn batch_payout --ramp recipients",
+    );
+  });
+
+  it("resets audit inputs back to defaults after customization", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: "audit" }));
+
+    const pathInput = screen.getByLabelText("Project or contract path") as HTMLInputElement;
+    const strictCheckbox = screen.getByLabelText(/fail on warnings/i) as HTMLInputElement;
+
+    fireEvent.change(pathInput, { target: { value: "./contracts/vault" } });
+    fireEvent.click(strictCheckbox); // uncheck strict
+
+    expect(screen.getByTestId("command-output")).toHaveTextContent(
+      "soroban-testkit audit ./contracts/vault",
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Reset" }));
+
+    expect(pathInput.value).toBe(".");
+    expect(strictCheckbox.checked).toBe(true);
+    expect(screen.getByTestId("command-output")).toHaveTextContent(
+      "soroban-testkit audit . --strict",
+    );
+  });
+});
+
+describe("Responsive footer layout (#195)", () => {
+  it("renders wrapping footer columns with links and metadata", () => {
+    render(<App />);
+
+    expect(screen.getByText("Soroban Testkit", { selector: ".footer-brand" })).toBeInTheDocument();
+    expect(screen.getByText("Built for the Stellar developer ecosystem.")).toBeInTheDocument();
+    expect(screen.getByText("Apache-2.0")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "CLI Workbench" })).toBeInTheDocument();
+  });
+});
+
 describe("Module filter and empty-state layout (#188)", () => {
   it("renders all 7 modules by default", () => {
     render(<App />);

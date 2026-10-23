@@ -5,6 +5,21 @@
   --font-sans: Manrope, sans-serif;
   --font-mono: "DM Mono", monospace;
 
+  /* Shared Surface Tokens (#197) */
+  --surface-base: #061310;
+  --surface-elevated: #091916;
+  --surface-terminal: #07100e;
+  --surface-output: #020807;
+  --surface-card: #ffffff02;
+  --surface-card-hover: #66e2ad08;
+
+  /* Shared Border Tokens (#197) */
+  --border-subtle: #ffffff12;
+  --border-default: #ffffff1c;
+  --border-strong: #ffffff24;
+  --border-input: #ffffff1f;
+  --border-tab: #ffffff20;
+
   /* Theme Colors */
   --color-canvas: #061310;
   --color-canvas-gradient: #123a31;
@@ -16,10 +31,21 @@
 
   /* Accent Colors */
   --color-accent: #66e2ad;
+  --color-accent-dark: #062017;
   --color-accent-text-dark: #062017;
   --color-accent-subtle: #66e2ad0b;
   --color-accent-border: #66e2ad22;
   --color-accent-surface: #66e2ad0d;
+
+  /* Text Hierarchy Tokens */
+  --text-primary: #e9f4ef;
+  --text-secondary: #a9bbb4;
+  --text-muted: #6f817a;
+  --text-body: #91a39c;
+  --text-label: #a7b8b1;
+  --text-tab: #8ea099;
+  --text-code: #dbe9e3;
+  --text-num: #587068;
 
   /* Text Colors */
   --color-text-primary: #e9f4ef;
@@ -305,9 +331,40 @@ input:invalid:focus, select:invalid:focus { border-color: #ff6b6b; box-shadow: 0
 .check { display: flex; align-items: center; justify-content: space-between; }
 .check-content { display: flex; align-items: center; gap: var(--space-sm); }
 .check input { width: auto; accent-color: var(--color-accent); }
+
+/* Command output and actions (#194, #205) */
 .output { display: flex; align-items: center; gap: 15px; padding: var(--space-lg); background: var(--color-surface-output); border-radius: var(--radius-md); }
 .output code { flex: 1; color: var(--color-accent); font: .75rem/1.6 var(--font-mono); overflow-wrap: anywhere; }
-.output button { color: var(--color-canvas); background: var(--color-accent); border: 0; border-radius: var(--radius-xs); padding: var(--space-sm) var(--space-md); cursor: pointer; font-weight: 600; }
+.output-actions { display: flex; align-items: center; gap: 10px; }
+.output button { color: var(--color-canvas); background: var(--color-accent); border: 0; border-radius: var(--radius-xs); padding: var(--space-sm) var(--space-md); cursor: pointer; font-weight: 600; white-space: nowrap; }
+.output button.button-reset { color: var(--text-secondary); background: transparent; border: 1px solid var(--border-strong); font-weight: 500; }
+.output button.button-reset:hover { color: var(--text-primary); border-color: var(--color-accent); }
+
+/* Compact command output layout for 320-pixel screens (#194) */
+@media (max-width: 480px) {
+  .output {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+  .output code {
+    width: 100%;
+    font-size: .72rem;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+  .output-actions {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+  .output button {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+  }
+}
 
 /* Issue #144 & #145: Copy options styling */
 .copy-options { display: flex; gap: var(--space-md); margin-block-start: var(--space-md); flex-wrap: wrap; }
@@ -320,7 +377,57 @@ input:invalid:focus, select:invalid:focus { border-color: #ff6b6b; box-shadow: 0
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
 
-footer { display: flex; justify-content: space-between; padding: 34px var(--page-padding); border-top: 1px solid var(--color-border-subtle); color: var(--color-text-muted); font-size: .78rem; }
+/* Responsive footer layout with wrapping columns (#195) */
+footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
+  padding: 48px var(--page-padding);
+  border-top: 1px solid var(--color-border-subtle);
+  color: var(--color-text-muted);
+  font-size: .78rem;
+}
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 150px;
+}
+.footer-brand {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: .85rem;
+}
+.footer-col p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--text-body);
+  max-width: 280px;
+}
+.footer-heading {
+  color: var(--text-secondary);
+  font-size: .7rem;
+  font-family: "DM Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-weight: 500;
+}
+.footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.footer-links a:hover {
+  color: var(--color-accent);
+}
+.footer-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-muted);
+}
 
 /* Responsive adjustments */
 
@@ -1234,4 +1341,12 @@ footer { display: flex; justify-content: space-between; padding: 34px var(--page
 .command-history-list > .button.secondary {
   margin-top: var(--space-md);
   align-self: flex-start;
+}
+
+@media (max-width: 600px) {
+  footer {
+    flex-direction: column;
+    gap: 24px;
+    padding: 32px 22px;
+  }
 }
