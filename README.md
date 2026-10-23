@@ -6,6 +6,10 @@ The interface does not execute contracts in the browser. Generated commands run 
 
 ## Features
 
+- **Theme Variants**: Supports both high-contrast dark theme (default) and WCAG AA/AAA-compliant light theme variant with an accessible navigation toggle button.
+- **High-Density Display Refinement**: Subpixel border rendering, crisp box-shadows, and antialiasing tailored for Retina / high-DPI displays.
+- **Interactive Module Cards**: Keyboard-accessible (`tabIndex={0}`) module cards with interactive `:hover` and `:focus-visible` outline indicators and accessible descriptions.
+- **Consistent Vertical Rhythm**: Standardized section spacing, header margins, and content gutters across all page sections (`hero`, `modules`, `commands`, `footer`).
 - **Design System & Theme Tokens**: Comprehensive CSS custom property scale (`:root`) standardizing color schemes (canvas, surfaces, accent, text hierarchy, borders) and spacing increments.
 - **Module Filter & Empty State**: Search and filter testing modules by name or description with real-time feedback and an accessible empty-state layout with quick filter reset.
 - **Responsive Layout Enhancements**:

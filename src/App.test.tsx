@@ -65,6 +65,62 @@ describe("App command copy", () => {
   });
 });
 
+describe("Light theme variant (#202)", () => {
+  it("defaults to dark theme and toggles to light theme with high contrast", () => {
+    const { container } = render(<App />);
+    const main = container.querySelector("main");
+    expect(main).toHaveAttribute("data-theme", "dark");
+
+    const toggleButton = screen.getByRole("button", {
+      name: "Switch to light theme",
+    });
+    expect(toggleButton).toBeInTheDocument();
+
+    fireEvent.click(toggleButton);
+    expect(main).toHaveAttribute("data-theme", "light");
+    expect(
+      screen.getByRole("button", { name: "Switch to dark theme" }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(toggleButton);
+    expect(main).toHaveAttribute("data-theme", "dark");
+  });
+});
+
+describe("Module card keyboard focus and accessibility (#191)", () => {
+  it("makes each module card keyboard focusable with descriptive accessible labels", () => {
+    render(<App />);
+    const grid = document.getElementById("module-grid") as HTMLElement;
+    const articles = within(grid).getAllByRole("article");
+    expect(articles).toHaveLength(7);
+
+    articles.forEach((article) => {
+      expect(article).toHaveAttribute("tabindex", "0");
+      expect(article).toHaveAttribute("aria-label");
+    });
+
+    const firstCard = articles[0];
+    firstCard.focus();
+    expect(document.activeElement).toBe(firstCard);
+  });
+});
+
+describe("Section rhythm and page structure (#192)", () => {
+  it("renders all page sections in a consistent vertical rhythm", () => {
+    const { container } = render(<App />);
+
+    const hero = container.querySelector("section.hero#top");
+    const modules = container.querySelector("section.modules#modules");
+    const commands = container.querySelector("section.commands#commands");
+    const footer = container.querySelector("footer");
+
+    expect(hero).toBeInTheDocument();
+    expect(modules).toBeInTheDocument();
+    expect(commands).toBeInTheDocument();
+    expect(footer).toBeInTheDocument();
+  });
+});
+
 describe("Module filter and empty-state layout (#188)", () => {
   it("renders all 7 modules by default", () => {
     render(<App />);

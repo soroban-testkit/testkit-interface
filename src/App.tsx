@@ -305,6 +305,7 @@ function highlightCommand(command: string): React.ReactNode {
 }
 
 export default function App() {
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [command, setCommand] = useState<CommandName>("coverage");
   const [path, setPath] = useState(".");
   const [format, setFormat] = useState<"html" | "lcov" | "text">("html");
@@ -595,6 +596,10 @@ export default function App() {
     }, 1600);
   };
 
+  const toggleTheme = () => {
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+  };
+
   // Issue #144: Copy command with explanatory comments
   const copyWithComments = async () => {
     const commented = formatCommandWithComments(options);
@@ -685,7 +690,7 @@ export default function App() {
   const fieldClasses = "field-input";
 
   return (
-    <main>
+    <main data-theme={theme}>
       <a className="skip-link" href="#top">
         Skip to main content
       </a>
@@ -724,6 +729,15 @@ export default function App() {
           {/* #116 — accessibility statement link */}
           <button type="button" className="nav-a11y-link" onClick={() => { setA11yOpen(true); setMobileMenuOpen(false); }}>
             Accessibility
+          </button>
+          <button
+            type="button"
+            className="theme-toggle"
+            onClick={toggleTheme}
+            aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+          >
+            <span aria-hidden="true">{theme === "dark" ? "☀️" : "🌙"}</span>
+            <span>{theme === "dark" ? "Light" : "Dark"}</span>
           </button>
         </div>
       </nav>
@@ -912,7 +926,12 @@ export default function App() {
             {filteredModules.length > 0 ? (
               <div className="module-grid" id="module-grid">
                 {filteredModules.map((mod, index) => (
-                  <article key={mod.name} className="module-card">
+                  <article
+                    key={mod.name}
+                    className="module-card"
+                    tabIndex={0}
+                    aria-label={`Module ${mod.name}: ${mod.description}`}
+                  >
                     <button
                       type="button"
                       className="module-card-select"
