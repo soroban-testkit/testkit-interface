@@ -20,6 +20,10 @@ automatically, what was fixed, and what still needs a manual pass.
 | Screen reader | Command selector is a labelled group of toggle buttons | `src/App.test.tsx`, `tests/visual/accessibility.spec.ts` |
 | Screen reader | Copy results are announced through a polite live region | `src/App.test.tsx`, `tests/visual/accessibility.spec.ts` |
 | Screen reader | Audit prerequisites are a labelled fieldset of checkboxes, each with its own accessible name | `src/App.test.tsx` |
+| Screen reader | Every form field carries an `aria-describedby` pointing to visible inline help text (#100) | `src/App.test.tsx` |
+| Screen reader | Focus moves to the command section heading after a workflow tab switch (#101) | `src/App.test.tsx` |
+| Screen reader | Validation errors are announced via an `aria-live="assertive"` region (#102) | `src/App.test.tsx` |
+| Screen reader | "Copied" label remains visible for at least 2 000 ms to give AT time to announce it (#103) | `src/App.test.tsx` |
 | High contrast | Controls, buttons, tabs, inputs, and cards retain boundaries in high-contrast/forced-colors modes (#107) | `src/styles.css`, `src/App.test.tsx` |
 | Zoom | No horizontal page scroll and no clipped controls at 640px and 320px CSS widths | `tests/visual/accessibility.spec.ts` |
 
@@ -57,6 +61,10 @@ browser and screen reader pair per platform.
 | 8 | The limits workflow needed a discoverable, ready-to-run command reference. | Fixed: added a focusable reference section and a build-and-run example with keyboard-focusable command steps. | `src/App.tsx`, `src/styles.css`, `tests/visual/accessibility.spec.ts` |
 | 9 | Scrollable `pre` blocks are not keyboard-focusable in every browser, so long lines may be unreachable by keyboard on some browsers. | Open. | `src/styles.css` |
 | 10 | The stored visual baselines in `tests/visual/__screenshots__` predate the current layout and do not match a fresh render. | Open. Baselines should be regenerated on the CI platform, not locally. | `tests/visual/` |
+| 11 | Form fields had no programmatic help text, so users relying on screen readers could not learn what each field expects without trial and error. | Fixed (#100): every required and optional input, select, and checkbox now carries an `aria-describedby` id pointing to a visible `.field-help` element. | `src/App.tsx` |
+| 12 | Switching workflow tabs left focus on the tab button, so screen reader users had to navigate forwards to find where the form changed. | Fixed (#101): after any tab switch, focus moves to the "From intent to command" `h2`, giving AT users an unambiguous entry point. | `src/App.tsx` |
+| 13 | Validation failures were silent; a screen reader user copying a command with an empty required field received no feedback. | Fixed (#102): an `aria-live="assertive"` region announces the first unsatisfied constraint, and the error clears when the field is filled. | `src/App.tsx` |
+| 14 | The "Copied" label reset after 1 600 ms, which is shorter than the announcement latency of many screen readers and Braille displays. | Fixed (#103): the reset timeout is now 3 000 ms, giving assistive technology enough time to read the change. | `src/App.tsx` |
 | 11 | Hover and active link and button states relied solely on color changes (#104). | Fixed: added underlines, offsets, and elevation cues. | `src/styles.css` |
 | 12 | Module cards lacked structured heading levels for cards and their workflow groups (#105). | Fixed: established h2 -> h3 -> h4 hierarchy and region grouping. | `src/App.tsx` |
 | 13 | Active command parameters lacked a screen-reader accessible summary (#106). | Fixed: added polite live region and focusable summary card. | `src/App.tsx` |

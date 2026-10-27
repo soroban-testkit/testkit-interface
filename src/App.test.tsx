@@ -1413,3 +1413,197 @@ describe("Session-only command history UI", () => {
     });
   });
 });
+
+// Issue #100 — inline help text associated with each form field
+describe("Inline help text for form fields (#100)", () => {
+  it("associates help text with the path input via aria-describedby", () => {
+    render(<App />);
+    const pathInput = screen.getByRole("textbox", { name: /project or contract path/i });
+    const describedBy = pathInput.getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+    const helpEl = document.getElementById(describedBy!);
+    expect(helpEl).not.toBeNull();
+    expect(helpEl!.textContent).toMatch(/path/i);
+  });
+
+  it("associates help text with the shell select via aria-describedby", () => {
+    render(<App />);
+    const shellSelect = screen.getByRole("combobox", { name: /shell target/i });
+    const describedBy = shellSelect.getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+    const helpEl = document.getElementById(describedBy!);
+    expect(helpEl).not.toBeNull();
+    expect(helpEl!.textContent?.length).toBeGreaterThan(0);
+  });
+
+  it("associates help text with the format select when coverage workflow is active", () => {
+    render(<App />);
+    const formatSelect = screen.getByRole("combobox", { name: /report format/i });
+    const describedBy = formatSelect.getAttribute("aria-describedby");
+    expect(describedBy).toBeTruthy();
+    const helpEl = document.getElementById(describedBy!);
+    expect(helpEl).not.toBeNull();
+    expect(helpEl!.textContent?.length).toBeGreaterThan(0);
+  });
+
+  it("associates help text with fn and ramp inputs in the limits workflow", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "limits" }));
+    const fnInput = screen.getByRole("textbox", { name: /^function$/i });
+    expect(fnInput.getAttribute("aria-describedby")).toBe("fn-help");
+    expect(document.getElementById("fn-help")).not.toBeNull();
+    const rampInput = screen.getByRole("textbox", { name: /ramp parameter/i });
+    expect(rampInput.getAttribute("aria-describedby")).toBe("ramp-help");
+    expect(document.getElementById("ramp-help")).not.toBeNull();
+  });
+});
+
+// Issue #101 — focus moves to the command section heading after a mode switch
+describe("Focus moves to workflow heading on mode switch (#101)", () => {
+  it("focuses the command section heading when switching to the limits workflow", () => {
+    render(<App />);
+    const limitsButton = screen.getByRole("button", { name: "limits" });
+    fireEvent.click(limitsButton);
+    const heading = screen.getByRole("heading", { name: /from intent to command/i });
+    expect(heading).toHaveFocus();
+  });
+
+  it("focuses the command section heading when switching back to coverage", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "limits" }));
+    fireEvent.click(screen.getByRole("button", { name: "coverage" }));
+    const heading = screen.getByRole("heading", { name: /from intent to command/i });
+    expect(heading).toHaveFocus();
+  });
+
+  it("focuses the command section heading when switching to audit", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "audit" }));
+    const heading = screen.getByRole("heading", { name: /from intent to command/i });
+    expect(heading).toHaveFocus();
+  });
+});
+
+// Issue #102 — validation errors announced through a live region
+describe("Validation errors announced via live region (#102)", () => {
+  const originalClipboard = navigator.clipboard;
+
+  afterEach(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: originalClipboard,
+      configurable: true,
+    });
+    vi.restoreAllMocks();
+  });
+
+  it("renders an assertive live region for validation errors", () => {
+    render(<App />);
+    const alerts = document.querySelectorAll('[aria-live="assertive"]');
+    expect(alerts.length).toBeGreaterThan(0);
+  });
+
+  it("announces an error when copy is attempted with an empty path", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    render(<App />);
+
+    // Clear the path field
+    const pathInput = screen.getByRole("textbox", { name: /project or contract path/i });
+    fireEvent.change(pathInput, { target: { value: "" } });
+
+    fireEvent.click(screen.getByRole("button", { name: /^Copy$/ }));
+
+    await waitFor(() => {
+      const alertRegion = document.querySelector('[aria-live="assertive"]');
+      expect(alertRegion?.textContent).toMatch(/path.*required/i);
+    });
+    // Clipboard should not be called when validation fails
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("clears the error message when the path field is filled in", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    render(<App />);
+    const pathInput = screen.getByRole("textbox", { name: /project or contract path/i });
+    fireEvent.change(pathInput, { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Copy$/ }));
+
+    await waitFor(() => {
+      const alertRegion = document.querySelector('[aria-live="assertive"]');
+      expect(alertRegion?.textContent).toMatch(/required/i);
+    });
+
+    fireEvent.change(pathInput, { target: { value: "." } });
+
+    await waitFor(() => {
+      const alertRegion = document.querySelector('[aria-live="assertive"]');
+      expect(alertRegion?.textContent).toBe("");
+    });
+  });
+});
+
+// Issue #103 — copied status persists long enough for assistive technology
+describe("Copied status persistence for assistive technology (#103)", () => {
+  const originalClipboard = navigator.clipboard;
+
+  afterEach(() => {
+    Object.defineProperty(navigator, "clipboard", {
+      value: originalClipboard,
+      configurable: true,
+    });
+    vi.restoreAllMocks();
+  });
+
+  it("shows the Copied label immediately after copy and resets after 3 s", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: false });
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    render(<App />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^Copy$/ }));
+    });
+
+    expect(screen.getByRole("button", { name: "Copied" })).toBeInTheDocument();
+
+    // Still present at 2 s — not yet reset
+    act(() => { vi.advanceTimersByTime(2000); });
+    expect(screen.queryByRole("button", { name: "Copied" })).toBeInTheDocument();
+
+    // Reverted after 3 s
+    act(() => { vi.advanceTimersByTime(1100); });
+    expect(screen.queryByRole("button", { name: /^Copy$/ })).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it("announces the copy result in the polite live region", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    render(<App />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /^Copy$/ }));
+    });
+
+    const liveRegion = document.querySelector('[aria-live="polite"]');
+    expect(liveRegion?.textContent).toMatch(/copied/i);
+  });
+});
