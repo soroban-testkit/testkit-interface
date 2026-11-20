@@ -954,9 +954,39 @@ export default function App() {
             <p className="eyebrow">{selectedModuleData.category}</p>
             <h2 id="modules-heading">{selectedModuleData.name}</h2>
             <p>{selectedModuleData.description}</p>
-            {/* Issue #82: Version and compatibility notes for the ttl module */}
+            {/* Issue #77, #76, #75: API overview, runnable example, and common failure modes for ttl module */}
             {selectedModuleData.name === "ttl" && (
               <div className="module-version-info">
+                <h3>API overview</h3>
+                <dl className="version-details">
+                  <dt><code>ttl_of(&env, storage_kind, key)</code></dt>
+                  <dd>Reads the current TTL (in ledger entries) for a storage entry. Returns the remaining lifetime before expiry.</dd>
+
+                  <dt><code>assert_bumps_ttl(&env, storage_kind, key, closure)</code></dt>
+                  <dd>Asserts that the closure extends the TTL for the given entry. Fails if the TTL does not increase.</dd>
+
+                  <dt><code>assert_survives_expiry(storage_kind, closure)</code></dt>
+                  <dd>Asserts that the closure handles expired data gracefully (no panics or unwraps on missing values).</dd>
+
+                  <dt><code>expire_all()</code></dt>
+                  <dd>Advances the ledger past <code>max_entry_ttl</code>, expiring all storage entries of all kinds.</dd>
+                </dl>
+                <p><strong>Storage kinds:</strong> Use <code>StorageKind::Persistent</code> for long-lived state (~6 months), <code>StorageKind::Temporary</code> for short-lived state (~100 days), or <code>StorageKind::Instance</code> for per-contract TTLs.</p>
+
+                <h3>Quick example</h3>
+                <pre><code>{`env.assert_bumps_ttl(&contract_id, StorageKind::Persistent, symbol_short!("key"), || {
+    client.touch(&symbol_short!("key"));
+});`}</code></pre>
+
+                <h3>Common failure modes</h3>
+                <ul>
+                  <li><strong><code>ttl_of</code> panics or returns None:</strong> The entry does not exist or has already expired. Write it first, and read the TTL before calling <code>expire_all()</code> or advancing the ledger too far.</li>
+                  <li><strong>Expected TTL to extend but it didn't:</strong> The closure did not call a function that extends the TTL. Verify that your contract client is calling the right method.</li>
+                  <li><strong>Contract panics on expired data:</strong> The contract read an expired entry with <code>.unwrap()</code>. Use <code>unwrap_or()</code>, <code>has()</code>, or <code>Option</code> patterns instead.</li>
+                  <li><strong>Different TTLs for Persistent vs. Temporary:</strong> Temporary storage expires much faster (~100 days vs. ~6 months). Use the correct <code>StorageKind</code> in your test.</li>
+                  <li><strong>Instance storage ignores the key:</strong> Instance storage has one TTL per contract. Use <code>StorageKind::Persistent</code> or <code>Temporary</code> for per-key lifetimes.</li>
+                </ul>
+
                 <h3>Version and compatibility</h3>
                 <dl className="version-details">
                   <dt>Current version</dt>
