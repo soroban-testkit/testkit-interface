@@ -1607,3 +1607,93 @@ describe("Copied status persistence for assistive technology (#103)", () => {
     expect(liveRegion?.textContent).toMatch(/copied/i);
   });
 });
+
+describe("Tokens module troubleshooting FAQ (#63)", () => {
+  it("renders a keyboard-accessible troubleshooting FAQ toggle in the tokens module view", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: /view details for tokens module/i }));
+
+    const toggle = screen.getByRole("button", { name: /show faq/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveAttribute("aria-controls", "tokens-faq-panel");
+    expect(document.getElementById("tokens-faq-panel")).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /hide faq/i })).toBeInTheDocument();
+    expect(document.getElementById("tokens-faq-panel")).toBeInTheDocument();
+    expect(screen.getByText(/Transfer or deposit panics with insufficient balance/i)).toBeInTheDocument();
+  });
+});
+
+describe("Tokens module runnable Rust example (#60)", () => {
+  it("renders a keyboard-focusable runnable Rust example and copies it on activation", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: /view details for tokens module/i }));
+
+    const region = screen.getByRole("region", {
+      name: /runnable rust example for the tokens module/i,
+    });
+    expect(region).toHaveAttribute("tabindex", "0");
+    expect(region.textContent).toContain("MockToken::deploy");
+    expect(region.textContent).toContain("transfer_updates_balances");
+
+    const copyBtn = screen.getByRole("button", { name: /copy tokens rust example/i });
+    await act(async () => {
+      fireEvent.click(copyBtn);
+    });
+
+    expect(writeText).toHaveBeenCalledWith(expect.stringContaining("fn transfer_updates_balances()"));
+    const liveRegion = document.querySelector('[aria-live="polite"]');
+    expect(liveRegion?.textContent).toMatch(/tokens rust example copied/i);
+  });
+});
+
+describe("Events module troubleshooting FAQ (#62)", () => {
+  it("renders a keyboard-accessible troubleshooting FAQ toggle in the events module view", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: /view details for events module/i }));
+
+    const toggle = screen.getByRole("button", { name: /show faq/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveAttribute("aria-controls", "events-faq-panel");
+    expect(document.getElementById("events-faq-panel")).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /hide faq/i })).toBeInTheDocument();
+    expect(document.getElementById("events-faq-panel")).toBeInTheDocument();
+    expect(screen.getByText(/No events captured after calling a contract method/i)).toBeInTheDocument();
+  });
+});
+
+describe("Events module quick-start walkthrough (#61)", () => {
+  it("renders a keyboard-accessible quick-start walkthrough in the events module view", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: /view details for events module/i }));
+
+    const toggle = screen.getByRole("button", { name: /show walkthrough/i });
+    expect(toggle).toHaveAttribute("aria-expanded", "false");
+    expect(toggle).toHaveAttribute("aria-controls", "events-quickstart-panel");
+    expect(document.getElementById("events-quickstart-panel")).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(screen.getByRole("button", { name: /hide walkthrough/i })).toBeInTheDocument();
+    const panel = document.getElementById("events-quickstart-panel");
+    expect(panel).toBeInTheDocument();
+    expect(screen.getByText(/Add the dev-dependency:/i)).toBeInTheDocument();
+
+    const codeRegion = screen.getByRole("region", {
+      name: /events module quick-start rust snippet/i,
+    });
+    expect(codeRegion).toHaveAttribute("tabindex", "0");
+    expect(codeRegion.textContent).toContain("EventLog::capture");
+  });
+});

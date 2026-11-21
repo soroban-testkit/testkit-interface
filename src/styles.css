@@ -292,6 +292,8 @@ h2 { margin: var(--space-md) 0; font-size: clamp(2rem, 4vw, 4rem); letter-spacin
 .module-detail nav a { color: var(--color-accent); }
 .module-detail h2 { margin: var(--space-md) 0; }
 .module-detail > p:not(.eyebrow) { color: var(--color-text-body); line-height: 1.65; }
+.module-detail .guide-card { margin-top: var(--space-xl); margin-bottom: var(--space-xl); }
+.module-detail pre:focus { outline: 2px solid var(--color-accent); outline-offset: 3px; }
 
 /* Module Empty State */
 .module-empty-state {

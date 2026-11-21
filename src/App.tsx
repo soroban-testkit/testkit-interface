@@ -369,6 +369,26 @@ function highlightCommand(command: string): React.ReactNode {
   return parts;
 }
 
+const TOKENS_RUST_EXAMPLE = `use soroban_testkit::core::TestEnv;
+use soroban_testkit::tokens::MockToken;
+
+#[test]
+fn transfer_updates_balances() {
+    let env = TestEnv::new();
+    env.env().mock_all_auths();
+
+    let admin = env.address();
+    let alice = env.address();
+    let bob = env.address();
+
+    let token = MockToken::deploy(&env, &admin);
+    token.mint(&alice, &10_000_000);
+    token.transfer(&alice, &bob, &2_500_000);
+
+    assert_eq!(token.balance(&alice), 7_500_000);
+    assert_eq!(token.balance(&bob), 2_500_000);
+}`;
+
 export default function App() {
   const [command, setCommand] = useState<CommandName>("coverage");
   const [path, setPath] = useState(".");
@@ -436,6 +456,14 @@ export default function App() {
   // Issue #84: Coverage command reference
   const [coverageCommandReferenceOpen, setCoverageCommandReferenceOpen] = useState(false);
   const [multiContractExamplesOpen, setMultiContractExamplesOpen] = useState(false);
+  // Issue #63: Troubleshooting FAQ for the tokens module
+  const [tokensFaqOpen, setTokensFaqOpen] = useState(false);
+  // Issue #60: Runnable Rust example for the tokens module
+  const [tokensExampleCopied, setTokensExampleCopied] = useState(false);
+  // Issue #62: Troubleshooting FAQ for the events module
+  const [eventsFaqOpen, setEventsFaqOpen] = useState(false);
+  // Issue #61: Quick-start walkthrough for the events module
+  const [eventsQuickStartOpen, setEventsQuickStartOpen] = useState(false);
   const comparePanelRef = useRef<HTMLDivElement>(null);
   // #117 — mobile nav toggle
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -978,6 +1006,200 @@ export default function App() {
                   <li><strong>Deterministic testing:</strong> TTL values in tests are deterministic. Use <code>env.ledger().sequence()</code> to control ledger time explicitly.</li>
                   <li><strong>Persistent vs. temporary:</strong> Different storage types (persistent vs. temporary) have different TTL semantics. Test both using the testkit module.</li>
                 </ul>
+              </div>
+            )}
+            {selectedModuleData.name === "events" && (
+              <div className="module-events-sections">
+                {/* Issue #61: Quick-start walkthrough for the events module */}
+                <article className="guide-card">
+                  <div className="guide-header">
+                    <h3>Quick-start walkthrough</h3>
+                    <button
+                      type="button"
+                      className="guide-toggle"
+                      aria-expanded={eventsQuickStartOpen}
+                      aria-controls="events-quickstart-panel"
+                      onClick={() => setEventsQuickStartOpen((open) => !open)}
+                    >
+                      {eventsQuickStartOpen ? "Hide walkthrough" : "Show walkthrough"}
+                    </button>
+                  </div>
+                  {eventsQuickStartOpen && (
+                    <div id="events-quickstart-panel" className="guide-panel">
+                      <ol>
+                        <li>
+                          <strong>Add the dev-dependency:</strong> Run <code>cargo add --dev soroban-testkit</code> in your contract crate.
+                        </li>
+                        <li>
+                          <strong>Create the test environment:</strong> Initialize <code>TestEnv::new()</code> and register your contract client.
+                        </li>
+                        <li>
+                          <strong>Capture events during invocation:</strong> Wrap your contract call with <code>EventLog::capture</code> to record all emitted events.
+                        </li>
+                        <li>
+                          <strong>Assert topics and payload:</strong> Filter by contract address and verify the expected topic symbols and typed data payload.
+                        </li>
+                      </ol>
+                      <pre
+                        role="region"
+                        aria-label="Events module quick-start Rust snippet"
+                        tabIndex={0}
+                      >
+                        <code>{`use soroban_sdk::symbol_short;
+use soroban_testkit::core::TestEnv;
+use soroban_testkit::events::EventLog;
+
+let env = TestEnv::new();
+let id = env.env().register(Vault, ());
+let client = VaultClient::new(env.env(), &id);
+
+let log = EventLog::capture(&env, || {
+    client.deposit(&env.address(), &500);
+});
+
+log.for_contract(&id)
+    .assert_emitted::<i128>((symbol_short!("deposit"),), &500);`}</code>
+                      </pre>
+                    </div>
+                  )}
+                </article>
+
+                {/* Issue #62: Troubleshooting FAQ for the events module */}
+                <article className="guide-card">
+                  <div className="guide-header">
+                    <h3>Troubleshooting FAQ</h3>
+                    <button
+                      type="button"
+                      className="guide-toggle"
+                      aria-expanded={eventsFaqOpen}
+                      aria-controls="events-faq-panel"
+                      onClick={() => setEventsFaqOpen((open) => !open)}
+                    >
+                      {eventsFaqOpen ? "Hide FAQ" : "Show FAQ"}
+                    </button>
+                  </div>
+                  {eventsFaqOpen && (
+                    <div id="events-faq-panel" className="guide-panel">
+                      <h4>No events captured after calling a contract method</h4>
+                      <p>
+                        <strong>Cause:</strong> Events were inspected before the contract invocation ran, or the test environment reset between calls.
+                      </p>
+                      <p>
+                        <strong>Solution:</strong> Capture events immediately inside or right after the contract call using <code>EventLog::capture(&amp;env, || &#123; ... &#125;)</code> or <code>env.events().all()</code>.
+                      </p>
+
+                      <h4>Topic assertion fails due to Symbol vs String mismatch</h4>
+                      <p>
+                        <strong>Cause:</strong> Soroban contract events distinguish between <code>Symbol</code> (such as <code>symbol_short!("transfer")</code>) and <code>String</code> values in topic tuples.
+                      </p>
+                      <p>
+                        <strong>Solution:</strong> Match the exact topic types published by <code>env.events().publish(...)</code> when building your expected topic matcher.
+                      </p>
+
+                      <h4>Contract filter misses events emitted by a sub-contract</h4>
+                      <p>
+                        <strong>Cause:</strong> Filtering by the outer contract address excludes events emitted by downstream token or helper contracts.
+                      </p>
+                      <p>
+                        <strong>Solution:</strong> Pass the emitting contract's <code>Address</code> to <code>for_contract(&amp;contract_id)</code>, or inspect the full captured log when asserting cross-contract flows.
+                      </p>
+
+                      <h4>Event payload decoding fails with a type mismatch</h4>
+                      <p>
+                        <strong>Cause:</strong> The Rust type requested in the assertion does not match the tuple or <code>#[contracttype]</code> struct serialized by the contract.
+                      </p>
+                      <p>
+                        <strong>Solution:</strong> Verify the exact field order and integer width (for example <code>i128</code> vs <code>u64</code>) in the contract's <code>publish</code> call.
+                      </p>
+                    </div>
+                  )}
+                </article>
+              </div>
+            )}
+            {selectedModuleData.name === "tokens" && (
+              <div className="module-tokens-sections">
+                {/* Issue #60: Runnable Rust example for the tokens module */}
+                <article className="guide-card">
+                  <div className="guide-header">
+                    <h3>Runnable Rust example</h3>
+                    <button
+                      type="button"
+                      className="guide-toggle"
+                      aria-label="Copy tokens Rust example"
+                      onClick={async () => {
+                        await copyToClipboard(TOKENS_RUST_EXAMPLE);
+                        setTokensExampleCopied(true);
+                        setAnnouncement("Tokens Rust example copied to clipboard");
+                        window.setTimeout(() => setTokensExampleCopied(false), 3000);
+                      }}
+                    >
+                      {tokensExampleCopied ? "Copied" : "Copy example"}
+                    </button>
+                  </div>
+                  <div className="guide-panel">
+                    <p>
+                      Save this test in <code>tests/tokens.rs</code> with <code>soroban-testkit</code> as a dev-dependency, then run <code>cargo test</code>:
+                    </p>
+                    <pre
+                      role="region"
+                      aria-label="Runnable Rust example for the tokens module"
+                      tabIndex={0}
+                    >
+                      <code>{TOKENS_RUST_EXAMPLE}</code>
+                    </pre>
+                  </div>
+                </article>
+
+                {/* Issue #63: Troubleshooting FAQ for the tokens module */}
+                <article className="guide-card">
+                  <div className="guide-header">
+                    <h3>Troubleshooting FAQ</h3>
+                    <button
+                      type="button"
+                      className="guide-toggle"
+                      aria-expanded={tokensFaqOpen}
+                      aria-controls="tokens-faq-panel"
+                      onClick={() => setTokensFaqOpen((open) => !open)}
+                    >
+                      {tokensFaqOpen ? "Hide FAQ" : "Show FAQ"}
+                    </button>
+                  </div>
+                  {tokensFaqOpen && (
+                    <div id="tokens-faq-panel" className="guide-panel">
+                      <h4>Transfer or deposit panics with insufficient balance</h4>
+                      <p>
+                        <strong>Cause:</strong> The sender address has not been minted enough test tokens, or the amount did not account for Stellar Asset Contract 7-decimal precision.
+                      </p>
+                      <p>
+                        <strong>Solution:</strong> Call <code>token.mint(&amp;sender, &amp;amount)</code> before invoking the contract under test, and express whole units in stroops (for example, <code>10_000_000</code> for 1.0 token).
+                      </p>
+
+                      <h4>HostError: Error(Auth, InvalidAction) on transfer or approve</h4>
+                      <p>
+                        <strong>Cause:</strong> Stellar Asset Contract calls require authorization from the <code>from</code> or <code>owner</code> address, which is missing in the test environment.
+                      </p>
+                      <p>
+                        <strong>Solution:</strong> Enable <code>env.mock_all_auths()</code> for happy-path balance tests, or configure explicit <code>mock_auths</code> entries for the expected signer when verifying authorization boundaries.
+                      </p>
+
+                      <h4>transfer_from fails even after approve</h4>
+                      <p>
+                        <strong>Cause:</strong> The allowance expired before the call, or the spender passed to <code>transfer_from</code> does not match the approved address.
+                      </p>
+                      <p>
+                        <strong>Solution:</strong> Pass an <code>expiration_ledger</code> greater than or equal to <code>env.ledger().sequence()</code> when calling <code>approve</code>, and verify the spender address matches.
+                      </p>
+
+                      <h4>Balance conservation assertion fails after fee-splitting calls</h4>
+                      <p>
+                        <strong>Cause:</strong> A conservation check only summed sender and recipient balances without accounting for protocol fee or treasury addresses.
+                      </p>
+                      <p>
+                        <strong>Solution:</strong> Include every participating account (including fee sinks and contract escrow addresses) when asserting total balance deltas across an invocation.
+                      </p>
+                    </div>
+                  )}
+                </article>
               </div>
             )}
             <button type="button" className="button secondary" onClick={() => setSelectedModule(null)}>
