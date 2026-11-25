@@ -82,6 +82,52 @@ describe("App command copy", () => {
   });
 });
 
+describe("Copy comments preference (#339)", () => {
+  const originalClipboard = navigator.clipboard;
+  const preferenceKey = "testkit.copy-with-comments";
+
+  beforeEach(() => {
+    localStorage.removeItem(preferenceKey);
+  });
+
+  afterEach(() => {
+    localStorage.removeItem(preferenceKey);
+    Object.defineProperty(navigator, "clipboard", {
+      value: originalClipboard,
+      configurable: true,
+    });
+    vi.restoreAllMocks();
+  });
+
+  it("remembers the choice to copy without comments and copies the plain command", async () => {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", {
+      value: { writeText },
+      configurable: true,
+    });
+
+    const { unmount } = render(<App />);
+    const preference = screen.getByRole("checkbox", { name: "Include explanatory comments" });
+    expect(preference).toBeChecked();
+
+    fireEvent.click(preference);
+    expect(localStorage.getItem(preferenceKey)).toBe("false");
+    unmount();
+
+    render(<App />);
+    await waitFor(() =>
+      expect(screen.getByRole("checkbox", { name: "Include explanatory comments" })).not.toBeChecked(),
+    );
+    fireEvent.click(
+      screen.getByRole("button", { name: "Copy command without explanatory comments" }),
+    );
+
+    await waitFor(() =>
+      expect(writeText).toHaveBeenCalledWith("soroban-testkit coverage . --format html --open"),
+    );
+  });
+});
+
 describe("Coverage option combinations component tests (#200)", () => {
   const originalClipboard = navigator.clipboard;
 
@@ -96,13 +142,20 @@ describe("Coverage option combinations component tests (#200)", () => {
   it("updates format radio options (html, lcov, text)", () => {
     render(<App />);
 
+    const openReport = screen.getByRole("checkbox", { name: /open report when complete/i });
     fireEvent.click(screen.getByRole("radio", { name: "lcov" }));
-    expect(screen.getByTestId("command-output")).toHaveTextContent("soroban-testkit coverage . --format lcov --open");
+    expect(openReport).toBeDisabled();
+    expect(openReport).not.toBeChecked();
+    expect(openReport).toHaveAccessibleDescription(/available for html reports only/i);
+    expect(screen.getByTestId("command-output")).toHaveTextContent(/^soroban-testkit coverage \. --format lcov$/);
 
     fireEvent.click(screen.getByRole("radio", { name: "text" }));
-    expect(screen.getByTestId("command-output")).toHaveTextContent("soroban-testkit coverage . --format text --open");
+    expect(openReport).toBeDisabled();
+    expect(screen.getByTestId("command-output")).toHaveTextContent(/^soroban-testkit coverage \. --format text$/);
 
     fireEvent.click(screen.getByRole("radio", { name: "html" }));
+    expect(openReport).toBeEnabled();
+    expect(openReport).toBeChecked();
     expect(screen.getByTestId("command-output")).toHaveTextContent("soroban-testkit coverage . --format html --open");
   });
 
@@ -119,7 +172,7 @@ describe("Coverage option combinations component tests (#200)", () => {
     expect(screen.getByTestId("command-output")).toHaveTextContent("soroban-testkit coverage . --format html --open");
   });
 
-  it("quotes coverage path when containing spaces and copies combined command", async () => {
+  it("escapes coverage paths containing spaces and quotes in the generated and copied command", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", {
       value: { writeText },
@@ -131,11 +184,11 @@ describe("Coverage option combinations component tests (#200)", () => {
     const pathInput = screen.getByRole("textbox", { name: "Project or contract path" });
     const openCheckbox = screen.getByLabelText(/open report when complete/i);
 
-    fireEvent.change(pathInput, { target: { value: "./contracts/my escrow" } });
+    fireEvent.change(pathInput, { target: { value: `./contracts/my "quoted" escrow's source` } });
     fireEvent.click(screen.getByRole("radio", { name: "lcov" }));
     fireEvent.click(openCheckbox); // unchecked
 
-    const expectedCommand = 'soroban-testkit coverage "./contracts/my escrow" --format lcov';
+    const expectedCommand = `soroban-testkit coverage './contracts/my "quoted" escrow'\\''s source' --format lcov`;
     expect(screen.getByTestId("command-output")).toHaveTextContent(expectedCommand);
 
     fireEvent.click(screen.getByRole("button", { name: "Copy" }));
@@ -216,7 +269,8 @@ describe("Audit option combinations component tests (#198)", () => {
     render(<App />);
     fireEvent.click(screen.getByRole("button", { name: "audit" }));
 
-    const strictCheckbox = screen.getByLabelText(/fail on warnings/i);
+    const strictCheckbox = screen.getByRole("checkbox", { name: "Fail on warnings (Audit strict mode)" });
+    expect(strictCheckbox).toHaveAccessibleDescription(/non-zero status/i);
     expect(strictCheckbox).toBeChecked();
     expect(screen.getByTestId("command-output")).toHaveTextContent("soroban-testkit audit . --strict");
 
@@ -752,6 +806,25 @@ describe("Limits command reference (#92)", () => {
 });
 
 describe("Audit workflow prerequisites checklist (#91)", () => {
+  it("restores the viewport offset when the Audit checklist opens or closes", () => {
+    render(<App />);
+    const toggle = screen.getByRole("button", { name: "Show tutorial" });
+    const scrollTo = vi.spyOn(window, "scrollTo").mockImplementation(() => {});
+    const scrollY = vi.spyOn(window, "scrollY", "get");
+    try {
+      scrollY.mockReturnValueOnce(500).mockReturnValueOnce(540);
+      fireEvent.click(toggle);
+      expect(scrollTo).toHaveBeenLastCalledWith({ top: 500, behavior: "instant" });
+
+      scrollY.mockReturnValueOnce(520).mockReturnValueOnce(480);
+      fireEvent.click(toggle);
+      expect(scrollTo).toHaveBeenLastCalledWith({ top: 520, behavior: "instant" });
+    } finally {
+      scrollY.mockRestore();
+      scrollTo.mockRestore();
+    }
+  });
+
   it("lets a user check off audit prerequisites, each with its own accessible name", () => {
     render(<App />);
 
@@ -1572,8 +1645,10 @@ describe("Validation errors announced via live region (#102)", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Copy$/ }));
 
     await waitFor(() => {
-      const alertRegion = document.querySelector('[aria-live="assertive"]');
-      expect(alertRegion?.textContent).toMatch(/path.*required/i);
+      const alertRegion = screen.getByRole("alert");
+      expect(alertRegion).toHaveAttribute("aria-live", "assertive");
+      expect(alertRegion).toHaveClass("sr-only");
+      expect(alertRegion).toHaveTextContent(/path.*required/i);
     });
     // Clipboard should not be called when validation fails
     expect(writeText).not.toHaveBeenCalled();
@@ -2447,7 +2522,7 @@ describe("Accessible report format markup (#324)", () => {
     fireEvent.click(within(group).getByRole("radio", { name: "lcov" }));
     expect(within(group).getByRole("radio", { name: "lcov" })).toBeChecked();
     expect(within(group).getByRole("radio", { name: "html" })).not.toBeChecked();
-    expect(screen.getByText("soroban-testkit coverage . --format lcov --open")).toBeInTheDocument();
+    expect(screen.getByText("soroban-testkit coverage . --format lcov")).toBeInTheDocument();
   });
 });
 
@@ -2496,5 +2571,42 @@ describe("Papytee assigned regressions (#350, #356)", () => {
     expect(screen.getByRole("region", { name: "Generated command output" })).toHaveFocus();
     expect(screen.getByTestId("command-output")).toHaveTextContent("soroban-testkit coverage");
     expect(screen.getByText("Jumped to the Coverage command output panel")).toBeInTheDocument();
+  });
+});
+
+describe("Assigned command-builder regressions (#346, #348, #351)", () => {
+  it("emits --strict only when Audit strict mode is enabled (#346)", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "audit" }));
+
+    const output = screen.getByTestId("command-output");
+    const strict = screen.getByRole("checkbox", { name: /fail on warnings/i });
+
+    expect(output).toHaveTextContent("--strict");
+    fireEvent.click(strict);
+    expect(output).not.toHaveTextContent("--strict");
+    expect(output).not.toHaveTextContent("--strict false");
+  });
+
+  it("shows an explanatory empty state when Command history is opened before any copy (#348)", () => {
+    render(<App />);
+
+    fireEvent.click(screen.getByRole("button", { name: /show \(0\)/i }));
+
+    expect(
+      screen.getByText("No commands yet. Copy a generated command to add it to this session history."),
+    ).toBeVisible();
+  });
+
+  it("shows live character and line counts for the Audit multiline editor (#351)", () => {
+    render(<App />);
+    fireEvent.click(screen.getByRole("button", { name: "audit" }));
+    fireEvent.click(screen.getByRole("button", { name: "Advanced arguments" }));
+
+    const editor = screen.getByRole("textbox", { name: "Advanced command arguments" });
+    fireEvent.change(editor, { target: { value: "soroban-testkit audit ./src\n--strict" } });
+
+    expect(screen.getByText("36 characters · 2 lines")).toBeVisible();
+    expect(editor).toHaveAttribute("aria-describedby", "audit-editor-count");
   });
 });

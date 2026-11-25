@@ -480,6 +480,7 @@ input:invalid:focus, select:invalid:focus { border-color: #ff6b6b; box-shadow: 0
 .copy-options { display: flex; gap: var(--space-md); margin-block-start: var(--space-md); flex-wrap: wrap; }
 .copy-options button { flex: 1; min-width: 200px; }
 .copy-options button:disabled { opacity: 0.5; cursor: not-allowed; }
+.copy-comments-preference { display: inline-flex; align-items: center; gap: var(--space-sm); }
 
 /* Issue #141 & #143: Command actions styling */
 .command-actions { display: flex; gap: var(--space-md); margin-block-start: var(--space-md); flex-wrap: wrap; }
@@ -542,6 +543,15 @@ footer { display: flex; justify-content: space-between; padding: 34px var(--page
   label { margin-bottom: var(--space-lg); gap: var(--space-xs); }
   .command-tabs { margin-top: var(--space-3xl); }
   .description { min-height: 36px; font-size: .9rem; }
+
+  /* #345 — keep keyboard focus unmistakable against compact landscape
+     surfaces without changing focus treatment at unrelated breakpoints. */
+  .builder :is(button, input, select, textarea, [tabindex="0"]):focus-visible,
+  .output :is(button, code[tabindex="0"]):focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 1px var(--color-canvas);
+  }
 }
 
 /* Issue #180: Prevent navigation links from wrapping awkwardly on small screens */
@@ -1800,3 +1810,16 @@ main pre[tabindex="0"]:focus-visible {
 
 /* Skip-link focus transitions must not leave keyboard users looking offscreen. */
 .skip-link { transition: none; }
+
+/* #348, #351 — compact status copy for command history and Audit editor. */
+.command-history-empty,
+.advanced-editor-count {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: .85rem;
+}
+.advanced-editor-count {
+  margin-top: calc(-1 * var(--space-sm));
+  margin-bottom: var(--space-md);
+  font-family: var(--font-mono);
+}

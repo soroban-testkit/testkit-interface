@@ -112,7 +112,13 @@ export const modules: ReadonlyArray<{
   { name: "ttl", description: "Storage lifetime and expiry simulation", category: "Storage" },
 ];
 
-const quote = (value: string) => (value.includes(" ") ? `"${value}"` : value);
+const quote = (value: string) => {
+  if (/^[A-Za-z0-9_./-]+$/.test(value)) return value;
+  if (/^[A-Za-z0-9_./ -]+$/.test(value)) return `"${value}"`;
+
+  // Paths with shell-significant characters must remain one literal POSIX argument.
+  return `'${value.replace(/'/g, "'\\''")}'`;
+};
 
 const getOptionalArgOrder = (options: CommandOptions): OptionalArgKey[] => {
   if (options.command === "coverage") {
@@ -139,7 +145,7 @@ const buildOptionalArgs = (options: CommandOptions): string[] => {
       args.push(`--format ${options.format}`);
     }
     if (key === "open") {
-      if (options.open) args.push("--open");
+      if (options.format === "html" && options.open) args.push("--open");
     }
     if (key === "strict") {
       if (options.strict) args.push("--strict");
@@ -322,7 +328,7 @@ export function formatCommandAsScript(options: CommandOptions): string {
     lines.push("# Coverage workflow configuration");
     lines.push(`PROJECT_PATH="${options.path || "."}"`);
     lines.push(`FORMAT="${options.format}"`);
-    lines.push(`OPEN_REPORT=${options.open ? "true" : "false"}`);
+    lines.push(`OPEN_REPORT=${options.format === "html" && options.open ? "true" : "false"}`);
     lines.push("");
     lines.push("# Generate coverage report");
     lines.push('soroban-testkit coverage \\');
@@ -552,7 +558,7 @@ export function summarizeConfiguration(
     return [
       { label: "Project or contract path", value: options.path || "(omitted)" },
       { label: "Report format", value: options.format },
-      { label: "Open report when complete", value: options.open ? "On" : "Off" },
+      { label: "Open report when complete", value: options.format === "html" && options.open ? "On" : "Off" },
     ];
   }
 

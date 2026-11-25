@@ -103,3 +103,36 @@ the card now has a separate "Show/Hide [module] module summary" disclosure.
 This control sets `aria-expanded`, references an always-mounted panel with
 `aria-controls`, and hides/unhides actual testing-concern content. Unit and
 browser tests cover both transitions.
+
+## Validation-error announcement audit (#342)
+
+**Audit result:** The required-path validation is announced; it is not relying
+on visual styling alone. Clicking the workbench's `Copy` button with an empty
+path sets the message in
+`p.sr-only[aria-live="assertive"][role="alert"]` in `src/App.tsx`. The
+`.sr-only` rule in `src/styles.css` visually clips the message without
+removing it from the accessibility tree. The component test in
+`src/App.test.tsx` verifies that the assertive live region receives the
+required-path message and that the clipboard is not called; a separate test
+verifies that filling in the path clears the error.
+
+This covers WCAG 2.1 AA 4.1.3 (Status Messages) for the announcement and
+3.3.1 (Error Identification) for the text description. No implementation
+change was needed for #342. The automated checks verify DOM semantics, not
+spoken output; the manual screen-reader pass above remains outstanding.
+
+**Pre-change visual reference:** [Coverage command-builder screenshot](../tests/visual/__screenshots__/commands-coverage.png).
+It shows the idle form, not the invalid interaction. The error is intentionally
+screen-reader-only, so a screenshot cannot establish whether a screen reader
+announces it; the DOM assertion is the relevant automated evidence.
+
+## Audit and Coverage controls
+
+- Audit strict mode (checkbox with `aria-describedby="strict-help"`) has the
+  name “Fail on warnings (Audit strict mode)”. The help remains its description,
+  and the accessible name contains the visible label for voice control.
+- Coverage’s Open report checkbox (`aria-describedby="open-help"`) uses native
+  `disabled` for LCOV and text. Its help explains that it is available for HTML
+  only. This exposes the disabled state independently of the visual styling.
+
+Component tests verify these names, descriptions and native disabled states.

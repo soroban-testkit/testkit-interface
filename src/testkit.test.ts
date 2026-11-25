@@ -92,8 +92,7 @@ describe("formatCommandLine", () => {
       [
         "soroban-testkit coverage \\",
         "  ./contracts/escrow \\",
-        "  --format lcov \\",
-        "  --open",
+        "  --format lcov",
       ].join("\n"),
     );
   });

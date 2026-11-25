@@ -16,6 +16,12 @@
 3. Mint the initial balance and record `initial_total` before executing transfers or contract calls.
 4. Compute `after_total` and call `Conservation::new(initial_total, after_total).assert_holds()` (or `assert_conserved_over` for multi-step flows).
 
+After adding conservation tests, run them with `cargo test`. To see which
+contract paths those tests exercise, use the Coverage workflow in the
+[README’s command-builder overview](../README.md#workflow-testing--verification).
+Select your contract project's directory and choose HTML for local inspection
+or LCOV for CI. The builder generates a command to run locally.
+
 ## Runnable example
 
 Put this in a test file of your contract crate (for example `tests/money.rs`), with `soroban-testkit` as a dev-dependency, then run `cargo test`:
