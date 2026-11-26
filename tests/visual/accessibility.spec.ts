@@ -79,11 +79,13 @@ test.describe("screen reader structure (#108)", () => {
     `);
   });
 
-  test("announces the command selector as a group and the example as a named region", async ({ page }) => {
+  test("announces the command selector as tabs with an associated panel", async ({ page }) => {
     await page.goto("/");
 
-    await expect(page.getByRole("group", { name: "Command workflow selector" })).toBeVisible();
-    await expect(page.getByRole("tablist", { name: "Command workflow selector" })).toHaveCount(0);
+    const tabs = page.getByRole("tablist", { name: "Command workflow selector" });
+    await expect(tabs).toBeVisible();
+    await expect(tabs.getByRole("tab", { name: "coverage" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tabpanel", { name: "coverage" })).toBeVisible();
     await expect(page.getByRole("region", { name: "Example Soroban test" })).toBeVisible();
   });
 
@@ -126,11 +128,11 @@ const workbenchStates: { name: string; open: (page: Page) => Promise<void> }[] =
   { name: "default coverage builder", open: async () => {} },
   {
     name: "limits workflow",
-    open: async (page) => page.getByRole("button", { name: "limits" }).click(),
+    open: async (page) => page.getByRole("tab", { name: "limits" }).click(),
   },
   {
     name: "audit workflow",
-    open: async (page) => page.getByRole("button", { name: "audit" }).click(),
+    open: async (page) => page.getByRole("tab", { name: "audit" }).click(),
   },
   {
     name: "advanced editor open",
@@ -206,6 +208,33 @@ test.describe("focus return (#111)", () => {
     });
   }
 });
+
+ fix/command-shell-mobile-tabs-copy-12-15
+// Issue #13: the mobile menu must open immediately below the navigation at
+// 320px and remain keyboard-operable even with a short viewport.
+test("mobile navigation remains reachable on a narrow short screen (#13)", async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 480 });
+  await page.goto("/");
+  const menuToggle = page.getByRole("button", { name: "Open navigation menu" });
+  await expect(menuToggle).toBeVisible();
+  await menuToggle.click();
+  const menu = page.locator("#mobile-menu");
+  await expect(menu).toBeVisible();
+  await expect(menu.getByRole("link", { name: "Commands" })).toBeVisible();
+
+  const positions = await page.evaluate(() => {
+    const nav = document.querySelector("nav")!.getBoundingClientRect();
+    const links = document.querySelector("#mobile-menu")!.getBoundingClientRect();
+    return { navBottom: nav.bottom, menuTop: links.top, menuRight: links.right, menuBottom: links.bottom };
+  });
+  expect(Math.abs(positions.menuTop - positions.navBottom)).toBeLessThanOrEqual(1);
+  expect(positions.menuRight).toBeLessThanOrEqual(321);
+  expect(positions.menuBottom).toBeLessThanOrEqual(481);
+
+  await menu.getByRole("link", { name: "Commands" }).focus();
+  await page.keyboard.press("Escape");
+  await expect(menu).toBeHidden();
+  await expect(menuToggle).toBeFocused();
 
 // Issue #330 — DOM/tab order must match the visual left-to-right switcher order
 test.describe("workflow switcher order (#330)", () => {
@@ -504,4 +533,5 @@ test.describe("Required vs Optional badge contrast (#265)", () => {
       await expect(page.locator('input[aria-required="true"]').first()).toHaveAttribute("aria-required", "true");
     });
   }
+ main
 });

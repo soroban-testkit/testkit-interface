@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import { describe, expect, it } from "vitest";
 import {
   buildCommand,
@@ -9,6 +10,7 @@ import {
   formatCommandAsScript,
   installationSteps,
   localFileGuides,
+  quoteShellArg,
   summarizeConfiguration,
   validateConfiguration,
   type CommandOptions,
@@ -729,6 +731,70 @@ describe("formatCommandAsScript", () => {
   });
 });
 
+ fix/command-shell-mobile-tabs-copy-12-15
+// Regression coverage for issue #12: each path stays a single literal argument.
+describe("shell command argument escaping (#12)", () => {
+  const hostilePaths = [
+    "./my contract/asset.wasm",
+    "./contract\"quoted.wasm",
+    "./it's-a-contract.wasm",
+    "./$HOME/contract.wasm",
+    "./`printf bad`/contract.wasm",
+    "./contracts;echo BAD",
+    "./line\nbreak/contract.wasm",
+    "./wildcard*.wasm",
+    "./back\\slash/contract.wasm",
+  ];
+
+  for (const path of hostilePaths) {
+    it(`preserves a hostile path as one literal sh argument: ${JSON.stringify(path)}`, () => {
+      const shellValue = quoteShellArg(path, "sh");
+      const result = execFileSync(
+        "sh",
+        ["-c", `set -- ${shellValue}; printf "%s\\n" "$#"; printf "%s" "$1"`],
+        { encoding: "utf8" },
+      );
+      expect(result).toBe(`1\n${path}`);
+      for (const command of ["coverage", "limits", "audit"] as const) {
+        const generated = buildCommand(options({ command, path }));
+        expect(generated).toContain(shellValue);
+        expect(formatCommandLine(options({ command, path }), true)).toContain(shellValue);
+        expect(formatCommandWithComments(options({ command, path }))).toContain(shellValue);
+      }
+    });
+  }
+
+  it("escapes apostrophes using fish-specific syntax", () => {
+    expect(quoteShellArg("./it's\\ok", "fish")).toBe("'./it\\'s\\\\ok'");
+  });
+
+  it("quotes editable limits arguments as well as paths", () => {
+    const generated = buildCommand(options({
+      command: "limits",
+      path: "./contract.wasm",
+      fn: "do_$(echo unsafe)",
+      ramp: "size;echo bad",
+    }));
+    expect(generated).toContain("'do_$(echo unsafe)'");
+    expect(generated).toContain('"size;echo bad"');
+  });
+
+  it("protects Bash variable assignments in downloadable scripts", () => {
+    const path = "./a'\"$(echo injection);branch";
+    for (const command of ["coverage", "limits", "audit"] as const) {
+      const script = formatCommandAsScript(options({ command, path }));
+      const assignment = script.split("\n").find((line) =>
+        line.startsWith(command === "coverage" ? "PROJECT_PATH=" :
+          command === "limits" ? "CONTRACT=" : "SOURCE_PATH="),
+      );
+      expect(assignment).toBeDefined();
+      const result = execFileSync("bash", [
+        "-c",
+        `${assignment}; printf '%s' "$${command === "coverage" ? "PROJECT_PATH" : command === "limits" ? "CONTRACT" : "SOURCE_PATH"}"`,
+      ], { encoding: "utf8" });
+      expect(result).toBe(path);
+    }
+
 // Issue #30: paths that begin with a command-line option prefix
 describe("paths beginning with an option prefix", () => {
   const base: CommandOptions = { command: "coverage", path: "", format: "html", open: false, fn: "", ramp: "", strict: false };
@@ -760,5 +826,6 @@ describe("paths beginning with an option prefix", () => {
       .toBe("soroban-testkit coverage ./my-contract --format html");
     expect(buildCommand({ ...base, command: "audit", path: "/abs/-src" }))
       .toBe("soroban-testkit audit /abs/-src");
+ main
   });
 });

@@ -9,6 +9,7 @@ export interface CommandOptions {
   fn: string;
   ramp: string;
   strict: boolean;
+  shell?: "bash" | "zsh" | "sh" | "fish";
   optionalArgOrder?: OptionalArgKey[];
 }
 
@@ -112,6 +113,31 @@ export const modules: ReadonlyArray<{
   { name: "ttl", description: "Storage lifetime and expiry simulation", category: "Storage" },
 ];
 
+ fix/command-shell-mobile-tabs-copy-12-15
+/**
+ * Quote exactly one CLI argument for the selected shell. Plain paths stay
+ * unquoted for readability, and ordinary paths with spaces retain double
+ * quotes. Single quotes prevent expansion of dollars, command substitutions,
+ * metacharacters and embedded newlines.
+ */
+export function quoteShellArg(
+  value: string,
+  shell: CommandOptions["shell"] = "bash",
+  alwaysQuote = false,
+): string {
+  if (value.includes("\0")) throw new Error("Shell arguments cannot contain NUL characters");
+  if (!alwaysQuote && /^[A-Za-z0-9_./:@%+=,-]+$/.test(value)) return value;
+  const requiresSingleQuotes = ['"', "'", "$", String.fromCharCode(96), "\\", "\n", "\r", "!"]
+    .some((character) => value.includes(character));
+  if (!requiresSingleQuotes) return '"' + value + '"';
+  if (shell === "fish") {
+    return "'" + value.replace(/\\/g, "\\\\").replace(/'/g, "\\'") + "'";
+  }
+  return "'" + value.replace(/'/g, "'\"'\"'") + "'";
+}
+const quote = (value: string, options: CommandOptions) =>
+  quoteShellArg(value, options.shell);
+
 const quote = (value: string) => {
   if (/^[A-Za-z0-9_./-]+$/.test(value)) return value;
   if (/^[A-Za-z0-9_./\s-]+$/.test(value)) return `"${value}"`;
@@ -131,6 +157,7 @@ const protectOptionPrefix = (value: string) =>
 const hasPath = (value: string) => value.trim().length > 0;
 
 const quotePath = (value: string) => quote(protectOptionPrefix(value));
+ main
 
 const getOptionalArgOrder = (options: CommandOptions): OptionalArgKey[] => {
   if (options.command === "coverage") {
@@ -191,7 +218,11 @@ export function buildCommand(options: CommandOptions): string {
     }
     return [
       "soroban-testkit coverage",
+ fix/command-shell-mobile-tabs-copy-12-15
+      options.path && quote(options.path, options),
+
       hasPath(options.path) ? quotePath(options.path) : "",
+ main
       ...buildOptionalArgs(options),
     ]
       .filter(Boolean)
@@ -202,17 +233,25 @@ export function buildCommand(options: CommandOptions): string {
     return [
       "soroban-testkit limits",
       "--contract",
+ fix/command-shell-mobile-tabs-copy-12-15
+      quote(options.path || fallbackValues.limitsContract, options),
+
       quotePath(hasPath(options.path) ? options.path : fallbackValues.limitsContract),
+ main
       "--fn",
-      options.fn || fallbackValues.limitsFunction,
+      quote(options.fn || fallbackValues.limitsFunction, options),
       "--ramp",
-      options.ramp || fallbackValues.limitsRamp,
+      quote(options.ramp || fallbackValues.limitsRamp, options),
     ].join(" ");
   }
 
   return [
     "soroban-testkit audit",
+ fix/command-shell-mobile-tabs-copy-12-15
+    quote(options.path || fallbackValues.auditPath, options),
+
     quotePath(hasPath(options.path) ? options.path : fallbackValues.auditPath),
+ main
     ...buildOptionalArgs(options),
   ]
     .filter(Boolean)
@@ -229,7 +268,11 @@ export function formatCommandLine(
 
   if (options.command === "coverage") {
     const args: string[] = [];
+ fix/command-shell-mobile-tabs-copy-12-15
+    if (options.path) args.push(quote(options.path, options));
+
     if (hasPath(options.path)) args.push(quotePath(options.path));
+ main
     args.push(...buildOptionalArgs(options));
 
     if (args.length === 0) {
@@ -243,9 +286,9 @@ export function formatCommandLine(
   }
 
   if (options.command === "limits") {
-    const contractPath = quotePath(hasPath(options.path) ? options.path : fallbackValues.limitsContract);
-    const fn = options.fn || fallbackValues.limitsFunction;
-    const ramp = options.ramp || fallbackValues.limitsRamp;
+    const contractPath = quote(options.path || fallbackValues.limitsContract, options);
+    const fn = quote(options.fn || fallbackValues.limitsFunction, options);
+    const ramp = quote(options.ramp || fallbackValues.limitsRamp, options);
 
     return [
       "soroban-testkit limits \\",
@@ -256,7 +299,11 @@ export function formatCommandLine(
   }
 
   // audit
+ fix/command-shell-mobile-tabs-copy-12-15
+  const auditPath = quote(options.path || fallbackValues.auditPath, options);
+
   const auditPath = quotePath(options.path || fallbackValues.auditPath);
+ main
   const auditArgs = buildOptionalArgs(options).map((arg) => `  ${arg}`);
 
   return [
@@ -267,7 +314,86 @@ export function formatCommandLine(
 }
 
 // Issue #144: Format command with explanatory comments
+// Keep comment lines *before* the shell command: inline comments after a
+// backslash continuation would turn the next argument into a new command.
 export function formatCommandWithComments(options: CommandOptions): string {
+ fix/command-shell-mobile-tabs-copy-12-15
+  const comments =
+    options.command === "coverage"
+      ? [
+          "# Generate contract-test coverage through cargo-llvm-cov",
+          "# Project or contract path",
+          "# Output format: html, lcov, or text",
+          ...(options.open ? ["# Open report in browser"] : []),
+        ]
+      : options.command === "limits"
+        ? [
+            "# Ramp a contract input to find its practical resource ceiling",
+            "# Path to compiled WASM artifact",
+            "# Function to probe for limits",
+            "# Parameter to increase",
+          ]
+        : [
+            "# Scan contract sources for auth, arithmetic, and TTL risks",
+            "# Contract source directory",
+            ...(options.strict ? ["# Fail on warnings"] : []),
+          ];
+  return [...comments, formatCommandLine(options, true)].join("\n");
+}
+
+// Issue #145: Format command as a reusable Bash script.
+// The script has a Bash shebang regardless of the interactive shell selector.
+export function formatCommandAsScript(options: CommandOptions): string {
+  const lines = [
+    "#!/usr/bin/env bash",
+    "",
+    "# Soroban Testkit command script",
+    `# Generated: ${new Date().toISOString()}`,
+    `# Workflow: ${options.command}`,
+    "",
+    "set -e  # Exit on error",
+    "",
+  ];
+
+  const assignment = (value: string) => quoteShellArg(value, "bash", true);
+  const addCommand = (name: string, args: string[]) => {
+    if (args.length === 0) {
+      lines.push(`soroban-testkit ${name}`);
+    } else {
+      lines.push(`soroban-testkit ${name} \\`);
+      args.forEach((arg, index) => {
+        lines.push(`  ${arg}${index < args.length - 1 ? " \\" : ""}`);
+      });
+    }
+  };
+
+  if (options.command === "coverage") {
+    lines.push("# Coverage workflow configuration");
+    lines.push(`PROJECT_PATH=${assignment(options.path || ".")}`);
+    lines.push(`FORMAT=${assignment(options.format)}`);
+    lines.push(`OPEN_REPORT=${options.open ? "true" : "false"}`);
+    lines.push("");
+    lines.push("# Generate coverage report");
+    addCommand("coverage", ['"$PROJECT_PATH"', ...buildOptionalArgs(options)]);
+  } else if (options.command === "limits") {
+    lines.push("# Resource limits configuration");
+    lines.push(`CONTRACT=${assignment(options.path || fallbackValues.limitsContract)}`);
+    lines.push(`FUNCTION=${assignment(options.fn || fallbackValues.limitsFunction)}`);
+    lines.push(`RAMP_PARAM=${assignment(options.ramp || fallbackValues.limitsRamp)}`);
+    lines.push("");
+    lines.push("# Run resource limits test");
+    addCommand("limits", ['--contract "$CONTRACT"', '--fn "$FUNCTION"', '--ramp "$RAMP_PARAM"']);
+  } else {
+    lines.push("# Audit workflow configuration");
+    lines.push(`SOURCE_PATH=${assignment(options.path || fallbackValues.auditPath)}`);
+    lines.push(`STRICT_MODE=${options.strict ? "true" : "false"}`);
+    lines.push("");
+    lines.push("# Run security audit");
+    addCommand("audit", ['"$SOURCE_PATH"', ...buildOptionalArgs(options)]);
+  }
+
+  lines.push("", 'echo "Command completed successfully"');
+
   const comments: string[] = [];
   
   if (options.command === "coverage") {
@@ -393,6 +519,7 @@ export function formatCommandAsScript(options: CommandOptions): string {
   lines.push("");
   lines.push('echo "Command completed successfully"');
 
+ main
   return lines.join("\n");
 }
 
