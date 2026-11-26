@@ -6,10 +6,18 @@ The interface does not execute contracts in the browser. Generated commands run 
 
 ## Features
 
+ feat/issues-190-192-202-display-rhythm-theme
+- **Theme Variants**: Supports both high-contrast dark theme (default) and WCAG AA/AAA-compliant light theme variant with an accessible navigation toggle button.
+- **High-Density Display Refinement**: Subpixel border rendering, crisp box-shadows, and antialiasing tailored for Retina / high-DPI displays.
+- **Interactive Module Cards**: Keyboard-accessible (`tabIndex={0}`) module cards with interactive `:hover` and `:focus-visible` outline indicators and accessible descriptions.
+- **Consistent Vertical Rhythm**: Standardized section spacing, header margins, and content gutters across all page sections (`hero`, `modules`, `commands`, `footer`).
+- **Design System & Theme Tokens**: Comprehensive CSS custom property scale (`:root`) standardizing color schemes (canvas, surfaces, accent, text hierarchy, borders) and spacing increments.
+
 - **Design System & Theme Tokens**: Comprehensive CSS custom property scale (`:root`) standardizing color schemes (`--surface-base`, `--surface-elevated`, `--surface-terminal`, `--surface-output`, `--surface-card`, canvas, accent, text hierarchy, and `--border-subtle`, `--border-default`, `--border-strong`, `--border-input`) and spacing increments.
 - **Compact Output for 320px Screens**: Responsive mobile output layout stacking the code block and action buttons on viewports down to 320px to prevent horizontal overflow and enhance touch targets.
 - **Responsive Footer Layout**: Semantic multi-column footer with wrapping layout displaying brand description, workflow navigation links, and licensing metadata.
 - **Workflow Input Reset**: Easily reset customized command builder inputs back to standard workflow defaults via the `Reset` action.
+ main
 - **Module Filter & Empty State**: Search and filter testing modules by name or description with real-time feedback and an accessible empty-state layout with quick filter reset.
 - **Responsive Layout Enhancements**:
   - **Large-text Hero Layout**: Enhanced typography scaling at 1200px+ viewports for improved readability on large displays.
