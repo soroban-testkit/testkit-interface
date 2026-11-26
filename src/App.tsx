@@ -1,4 +1,4 @@
-import { type KeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, type KeyboardEvent, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   buildCommand,
   formatCommandLine,
@@ -6,6 +6,7 @@ import {
   formatCommandAsScript,
   modules,
   moduleCategories,
+  fallbackValues,
   type CommandName,
   type ModuleCategory,
   type OptionalArgKey,
@@ -20,9 +21,15 @@ const navSections = [
   { id: "install", label: "Install" },
   { id: "modules", label: "Modules" },
   { id: "commands", label: "Commands" },
+  { id: "audit-reference", label: "Audit reference" },
   { id: "limits-reference", label: "Limits reference" },
 ] as const;
 const navSectionIds = navSections.map((section) => section.id);
+ fix/command-shell-mobile-tabs-copy-12-15
+const commandNames = ["coverage", "limits", "audit"] as const;
+
+const COPY_COMMENTS_PREFERENCE_KEY = "testkit.copy-with-comments";
+ main
 
 // Which CLI workflows are most useful for each module (#130). Keyed by module
 // name so adding a module without a mapping fails type-checking.
@@ -122,6 +129,412 @@ const descriptions: Record<CommandName, string> = {
 
 const defaultCoverageOrder: OptionalArgKey[] = ["format", "open"];
 
+const eventsExampleCode = `use soroban_sdk::{symbol_short, Address};
+use soroban_testkit::core::TestEnv;
+use soroban_testkit::events::EventLog;
+
+#[test]
+fn deposit_emits_typed_transfer_event() {
+    let env = TestEnv::new();
+    let contract_id = env.env().register(Vault, ());
+    let client = VaultClient::new(env.env(), &contract_id);
+    let sender: Address = env.address();
+
+    let log = EventLog::capture(&env, || {
+        client.deposit(&sender, &250);
+    });
+
+    log.assert_count(1);
+    log.assert_topic(&contract_id, (symbol_short!("deposit"), sender.clone()));
+    log.assert_data::<i128>(&contract_id, 250);
+}`;
+
+const eventsFailureModes = [
+  {
+    title: "expected N events, found M",
+    detail:
+      "Setup calls (such as token minting or initialization) ran inside EventLog::capture, or a cross-contract call emitted an extra event. Move setup before capture or filter by contract_id.",
+  },
+  {
+    title: "topic mismatch at index",
+    detail:
+      "Soroban encodes Symbol topics differently from String values. Use symbol_short! or Symbol::new to match the exact topic type emitted by the contract.",
+  },
+  {
+    title: "failed to decode event data as T",
+    detail:
+      "The Rust type passed to assert_data::<T> does not match the XDR type emitted by env.events().publish(...) (for example u128 vs i128, or a tuple vs a struct).",
+  },
+  {
+    title: "no events captured for contract",
+    detail:
+      "The contract invocation panicked before publishing, or EventLog::capture was called on a different TestEnv instance than the contract client.",
+  },
+] as const;
+
+// Issue #33 — concise API overview for the core module
+const coreApiOverview = [
+  {
+    symbol: "TestEnv::new()",
+    summary: "Creates a deterministic environment wrapping soroban_sdk::Env; every other testkit module extends it.",
+  },
+  {
+    symbol: "TestEnv::with_seed(n)",
+    summary: "Creates a reproducible environment so generated addresses and values repeat across runs.",
+  },
+  {
+    symbol: "env.address()",
+    summary: "Generates a test address for a caller or contract; env.addresses(n) derives several at once.",
+  },
+  {
+    symbol: "env.env()",
+    summary: "Returns the underlying &soroban_sdk::Env for SDK calls the core module does not wrap directly.",
+  },
+  {
+    symbol: "env.reset()",
+    summary: "Clears contracts and the ledger clock while keeping the original seed and close interval.",
+  },
+  {
+    symbol: "TestkitError::code()",
+    summary: "Classifies an assertion failure by a stable code instead of matching panic message text.",
+  },
+] as const;
+
+const eventsApiOverview = [
+  {
+    symbol: "EventLog::capture(&env, f)",
+    summary: "Executes f against TestEnv and captures all contract events emitted during the invocation.",
+  },
+  {
+    symbol: "log.assert_count(n)",
+    summary: "Asserts that exactly n events were captured, printing a diagnostic summary on mismatch.",
+  },
+  {
+    symbol: "log.assert_topic(&id, topics)",
+    summary: "Verifies that a captured event from id matches the expected Soroban topic tuple.",
+  },
+  {
+    symbol: "log.assert_data::<T>(&id, val)",
+    summary: "Decodes the event data payload as T and asserts equality against val.",
+  },
+  {
+    symbol: "log.for_contract(&id)",
+    summary: "Filters captured events to those emitted by a single contract address.",
+  },
+] as const;
+
+const authApiOverview = [
+  {
+    symbol: "AuthMatrix::new(&env)",
+    summary: "Creates a privilege matrix bound to TestEnv to verify allowed and disallowed callers across entry points.",
+  },
+  {
+    symbol: ".entry_point(name, allowed, invoke)",
+    summary: "Registers an entry point with its authorized caller slice and invocation closure returning Result.",
+  },
+  {
+    symbol: ".assert_enforced()",
+    summary: "Cross-checks every entry point against allowed callers and all other known addresses, failing with a matrix diff on mismatch.",
+  },
+  {
+    symbol: "env.assert_requires_auth(|| { ... })",
+    summary: "Asserts that a single contract invocation fails when called without authorization.",
+  },
+] as const;
+
+const authQuickStartSteps = [
+  {
+    title: "Add soroban-testkit as a dev-dependency",
+    detail: "Run cargo add --dev soroban-testkit in your contract crate.",
+  },
+  {
+    title: "Create a TestEnv and test identities",
+    detail: "Call TestEnv::new() and env.address() to generate owner and unprivileged caller addresses.",
+  },
+  {
+    title: "Register entry points in AuthMatrix",
+    detail: "Pass each entry point name, its allowed caller slice, and a closure returning Result to .entry_point(...).",
+  },
+  {
+    title: "Run cross-checks with assert_enforced",
+    detail: "Call .assert_enforced() to verify allowed callers succeed and all other known callers are rejected.",
+  },
+] as const;
+
+const authExampleCode = `use soroban_testkit::auth::AuthMatrix;
+use soroban_testkit::core::TestEnv;
+
+#[test]
+fn only_owner_can_withdraw() {
+    let env = TestEnv::new();
+    let owner = env.address();
+    let other = env.address();
+
+    AuthMatrix::new(&env)
+        .entry_point("deposit", &[owner.clone(), other.clone()], |_caller| Ok(()))
+        .entry_point("withdraw", &[owner.clone()], |caller| {
+            if *caller == owner {
+                Ok(())
+            } else {
+                Err(soroban_sdk::Error::from_contract_error(1))
+            }
+        })
+        .assert_enforced();
+}`;
+
+const authTroubleshootingFaq = [
+  {
+    id: "unauthorized-succeeds",
+    question: "Why does an unauthorized caller succeed in AuthMatrix?",
+    cause: "Global auth mocking (mock_all_auths) is enabled, or the entry point never calls require_auth().",
+    solution:
+      "Remove mock_all_auths() from auth tests and mock per-call auths for the tested caller with try_* client methods.",
+  },
+  {
+    id: "attacker-never-tested",
+    question: "Why did AuthMatrix pass even though an unprivileged address was not rejected?",
+    cause: "AuthMatrix only tests addresses that appear in at least one entry point's allowed slice.",
+    solution:
+      "Register the unprivileged address as allowed on an open entry point (such as deposit or a read-only probe) so it becomes a known caller.",
+  },
+  {
+    id: "matrix-panics-instead-of-err",
+    question: "Why does my test panic instead of returning Err for disallowed callers?",
+    cause: "The closure invokes the standard contract client method, which panics on HostError/AuthError.",
+    solution:
+      "Call the generated try_* client method inside the closure and map Ok/Err so AuthMatrix can inspect rejections.",
+  },
+  {
+    id: "assert-requires-auth-fails",
+    question: "Why does env.assert_requires_auth fail with 'succeeded without authorization'?",
+    cause: "The contract entry point did not invoke address.require_auth() or require_auth_for_args() before returning.",
+    solution: "Add require_auth() on the authorizing address at the start of the privileged contract method.",
+  },
+] as const;
+
+const coreTroubleshootingFaq = [
+  {
+    id: "warp-to-earlier",
+    question: "Why does try_warp_to return an error?",
+    cause: "The target timestamp is earlier than env.now(); the mock ledger clock cannot move backwards.",
+    solution: "Compute targets from env.now() or handle the Err returned by try_warp_to.",
+  },
+  {
+    id: "advance-overflow",
+    question: "Why did an advance call overflow ledger arithmetic?",
+    cause: "The requested sequence or timestamp exceeds the ledger counter type after applying the duration.",
+    solution: "Use smaller whole-second durations or the try_advance* variants and inspect the error.",
+  },
+  {
+    id: "handles-after-reset",
+    question: "Why do addresses and clients stop working after reset()?",
+    cause: "reset() discards all state, so handles created before the reset still point at the old environment.",
+    solution: "Recreate addresses, clients, and Env handles after calling reset().",
+  },
+] as const;
+
+const moneyApiOverview = [
+  {
+    symbol: "Conservation::new(before, after)",
+    summary: "Captures the expected and observed total supply across participating accounts for a state transition.",
+  },
+  {
+    symbol: ".assert_holds()",
+    summary: "Asserts that before == after, panicking with the signed delta if any value was leaked or created.",
+  },
+  {
+    symbol: "assert_conserved_over(initial, steps)",
+    summary: "Verifies that total supply remains conserved after every transition in a multi-step lifecycle.",
+  },
+  {
+    symbol: "adversarial_amounts()",
+    summary: "Generates boundary and rounding-edge i128 inputs (0, 1, i128::MAX) to stress-test arithmetic and overflow handling.",
+  },
+] as const;
+
+const moneyQuickStartSteps = [
+  {
+    title: "Add soroban-testkit as a dev-dependency",
+    detail: "Run cargo add --dev soroban-testkit in your contract crate.",
+  },
+  {
+    title: "Create a TestEnv, token, and test addresses",
+    detail: "Call TestEnv::new(), env.token(), and env.address() to set up buyer, seller, and escrow participants.",
+  },
+  {
+    title: "Mint balances and record the initial supply",
+    detail: "Fund test accounts with token.mint(&buyer, amount) and sum initial_total before running transfers.",
+  },
+  {
+    title: "Assert supply conservation after transitions",
+    detail: "Compute after_total and call Conservation::new(initial_total, after_total).assert_holds() to catch leaked balances.",
+  },
+] as const;
+
+const moneyFailureModes = [
+  {
+    title: "supply conservation mismatch",
+    detail:
+      "Conservation::new(before, after).assert_holds() panicked because after differed from before. Check for unburned fees, rounding dust, or missed account balances in the total.",
+  },
+  {
+    title: "i128 arithmetic overflow",
+    detail:
+      "Summing balances or multiplying large adversarial amounts exceeded i128::MAX. Use checked arithmetic (checked_add, checked_mul) in contract calculations.",
+  },
+  {
+    title: "rounding dust accumulation",
+    detail:
+      "Integer division or fee splits truncated remainders across repeated transfers, causing assert_conserved_over to fail on a later step.",
+  },
+  {
+    title: "negative amount input",
+    detail:
+      "Passing a negative i128 amount to token transfers or mints panics immediately; validate amount >= 0 at contract entry points.",
+  },
+] as const;
+
+const moneyExampleCode = `use soroban_testkit::core::TestEnv;
+use soroban_testkit::money::Conservation;
+
+#[test]
+fn escrow_release_conserves_total_supply() {
+    let env = TestEnv::new();
+    let token = env.token();
+    let buyer = env.address();
+    let seller = env.address();
+    let escrow = env.address();
+
+    token.mint(&buyer, 1_000);
+    let initial_total = token.balance(&buyer) + token.balance(&seller) + token.balance(&escrow);
+
+    token.transfer(&buyer, &escrow, 1_000);
+    token.transfer(&escrow, &seller, 600);
+
+    let after_total = token.balance(&buyer) + token.balance(&seller) + token.balance(&escrow);
+    Conservation::new(initial_total, after_total).assert_holds();
+}`;
+
+const moneyTroubleshootingFaq = [
+  {
+    id: "conservation-off-by-one",
+    question: "Why does Conservation::assert_holds() fail by 1 or a few stroops?",
+    cause: "Integer division in fee, split, or pro-rata calculations truncated a remainder without accounting for dust.",
+    solution:
+      "Route remainder or dust explicitly to a designated recipient or treasury so total supply is conserved across every transfer.",
+  },
+  {
+    id: "overflow-on-boundary-inputs",
+    question: "Why does my contract panic on i128::MAX or adversarial boundary inputs?",
+    cause: "Unchecked arithmetic (+, -, *) overflowed i128 in debug or WASM builds.",
+    solution:
+      "Use checked_add, checked_sub, and checked_mul and return a contract error instead of panicking on overflow.",
+  },
+  {
+    id: "intermediate-step-conservation",
+    question: "Why does assert_conserved_over fail on an intermediate step even though the final balance matches?",
+    cause: "An intermediate state transition temporarily minted, burned, or omitted a holding account before a later step compensated.",
+    solution:
+      "Include every holding address (such as escrow or fee vaults) in the conserved total at each step.",
+  },
+  {
+    id: "negative-amount-panic",
+    question: "Why do negative amounts cause a panic before my conservation check runs?",
+    cause: "Soroban SAC transfer and mint reject negative i128 amounts at the host boundary.",
+    solution:
+      "Validate amount > 0 (or >= 0 where zero-value no-ops are allowed) at contract entry points.",
+  },
+] as const;
+
+const tokensApiOverview = [
+  {
+    symbol: "env.token()",
+    summary: "Deploys an isolated Stellar Asset Contract (SAC) test double bound to TestEnv.",
+  },
+  {
+    symbol: "token.address()",
+    summary: "Returns the Address of the SAC test double to pass into contracts under test.",
+  },
+  {
+    symbol: "token.mint(&to, amount)",
+    summary: "Mints amount (i128) tokens to to using test admin privileges.",
+  },
+  {
+    symbol: "token.transfer(&from, &to, amount)",
+    summary: "Transfers amount tokens from from to to while enforcing SAC authorization.",
+  },
+  {
+    symbol: "token.approve(&owner, &spender, amount, expiration_ledger)",
+    summary: "Approves spender to transfer up to amount on behalf of owner until expiration_ledger.",
+  },
+  {
+    symbol: "token.transfer_from(&spender, &from, &to, amount)",
+    summary: "Transfers amount from from to to using an existing allowance for spender.",
+  },
+  {
+    symbol: "token.balance(&id) / token.assert_balance(&id, expected)",
+    summary: "Reads an account's i128 balance or asserts it equals expected.",
+  },
+] as const;
+
+const tokensQuickStartSteps = [
+  {
+    title: "Add soroban-testkit as a dev-dependency",
+    detail: "Run cargo add --dev soroban-testkit in your contract crate.",
+  },
+  {
+    title: "Create a TestEnv and SAC test double",
+    detail: "Call TestEnv::new() and env.token() to spin up an isolated Stellar Asset Contract test double.",
+  },
+  {
+    title: "Mint initial test balances",
+    detail: "Generate test addresses with env.address() and fund them using token.mint(&account, amount).",
+  },
+  {
+    title: "Invoke transfers and assert balances",
+    detail: "Call token.transfer(...) or pass the token address to your contract, then verify balances with token.balance(&account).",
+  },
+] as const;
+
+const tokensExampleCode = `use soroban_testkit::core::TestEnv;
+
+#[test]
+fn token_transfer_updates_balances() {
+    let env = TestEnv::new();
+    let token = env.token();
+    let alice = env.address();
+    let bob = env.address();
+
+    token.mint(&alice, 1_000);
+    token.transfer(&alice, &bob, 350);
+
+    assert_eq!(token.balance(&alice), 650);
+    assert_eq!(token.balance(&bob), 350);
+}`;
+
+const tokensFailureModes = [
+  {
+    title: "insufficient balance",
+    detail:
+      "token.transfer or token.transfer_from panicked because the sender balance was lower than the requested amount. Mint funds with token.mint(&from, amount) before transferring.",
+  },
+  {
+    title: "negative amount or overflow",
+    detail:
+      "Soroban SAC amounts are signed i128 values. Passing a negative amount or overflowing i128::MAX panics immediately.",
+  },
+  {
+    title: "allowance exceeded or missing approval",
+    detail:
+      "token.transfer_from requires a prior token.approve(&owner, &spender, amount, expiration_ledger) that covers the transfer amount and has not expired.",
+  },
+  {
+    title: "authorization error on transfer",
+    detail:
+      "Unlike token.mint (which uses test admin privileges), token.transfer and token.approve enforce SAC auth. Mock auth for the sender or owner when testing without mock_all_auths.",
+  },
+] as const;
+
 const optionalArgumentRows = [
   { key: "format" as const, label: "Format", summary: "--format html" },
   { key: "open" as const, label: "Open report", summary: "--open" },
@@ -209,12 +622,84 @@ const auditPrerequisites = [
   { id: "builds-clean", label: "Contract builds without warnings before scanning" },
 ];
 
+// Issue #85: Prerequisites checklist for limits workflow
+const limitsPrerequisites = [
+  { id: "wasm-compiled", label: "Contract compiled to WASM and artifact exists" },
+  { id: "testkit-cli", label: "Testkit CLI installed and on your PATH" },
+  { id: "fn-exported", label: "Target function is exported in contract ABI" },
+  { id: "ramp-param", label: "Ramp parameter exists in target function signature" },
+];
+
+// Issue #83: Preflight checklist for limits workflow
+const limitsPreflight = [
+  { id: "artifact-path", label: "WASM artifact path is correct" },
+  { id: "function-valid", label: "Function name matches exported symbol" },
+  { id: "param-compatible", label: "Ramp parameter is numeric or list type" },
+  { id: "args-prepared", label: "Test arguments prepared for function invocation" },
+];
+
+// Issue #86: Advanced options for limits workflow
+export const limitsAdvancedOptions = [
+  { id: "timeout", label: "Execution timeout (ms)", type: "number", default: "5000" },
+  { id: "sample-rate", label: "Sample rate for ramp sweep", type: "number", default: "10" },
+  { id: "verbose", label: "Enable verbose output", type: "boolean", default: "false" },
+  { id: "dump-state", label: "Dump contract state after each test", type: "boolean", default: "false" },
+];
+
+// Issue #81: Prerequisites checklist for coverage workflow
+const coveragePrerequisites = [
+  { id: "rust", label: "Rust toolchain installed via rustup" },
+  { id: "llvm-cov", label: "cargo-llvm-cov installed and available" },
+  { id: "testkit-cli", label: "Testkit CLI installed and on your PATH" },
+  { id: "tests-pass", label: "Local test suite runs successfully" },
+];
+
+// Issue #78: Preflight checklist for coverage workflow
+const coveragePreflight = [
+  { id: "workspace-root", label: "Target path points to a Cargo contract workspace" },
+  { id: "llvm-tools", label: "llvm-tools-preview component is installed for cargo-llvm-cov" },
+  { id: "clean-tests", label: "Unit and integration tests compile and pass with cargo test" },
+  { id: "output-format", label: "Report format (--format html, lcov, or text) matches your workflow" },
+];
+
+// Issue #79: Advanced options for coverage workflow
+export const coverageAdvancedOptions = [
+  { id: "threads", label: "Number of parallel test threads", type: "number", default: "4" },
+  { id: "timeout", label: "Per-test timeout (seconds)", type: "number", default: "300" },
+  { id: "fail-fast", label: "Stop on first test failure", type: "boolean", default: "false" },
+  { id: "exact", label: "Run only exact test matches", type: "boolean", default: "false" },
+];
+
+// Issue #80: Ready-to-run examples for coverage workflow
+const coverageExamples = [
+  {
+    title: "Single contract in root",
+    description: "Run coverage for a contract in the repository root",
+    command: "soroban-testkit coverage . --format html --open",
+  },
+  {
+    title: "Monorepo structure",
+    description: "Run coverage for a specific contract in a /contracts subdirectory",
+    command: "soroban-testkit coverage ./contracts/my-contract --format html --open",
+  },
+  {
+    title: "Machine-readable output",
+    description: "Generate LCOV format for CI/CD integration",
+    command: "soroban-testkit coverage . --format lcov",
+  },
+  {
+    title: "Terminal summary only",
+    description: "Quick coverage check without opening a report",
+    command: "soroban-testkit coverage . --format text",
+  },
+];
+
 function summarizeConfiguration(options: CommandOptions): SummaryRow[] {
   const rows: SummaryRow[] = [{ label: "Workflow", value: options.command }];
   if (options.path) rows.push({ label: "Path", value: options.path });
   if (options.command === "coverage" && options.format) {
     rows.push({ label: "Format", value: options.format });
-    if (options.open) rows.push({ label: "Open report", value: "Yes" });
+    if (options.format === "html" && options.open) rows.push({ label: "Open report", value: "Yes" });
   }
   if (options.command === "limits") {
     rows.push({ label: "Function", value: options.fn });
@@ -238,15 +723,15 @@ function effectiveDefaults(options: CommandOptions): DefaultRow[] {
       rows.push({
         key: "contract",
         label: "Contract",
-        value: "target/wasm32v1-none/release/contract.wasm",
+        value: fallbackValues.limitsContract,
         applied: true,
       });
     }
     if (!options.fn) {
-      rows.push({ key: "fn", label: "Function", value: "batch_payout", applied: true });
+      rows.push({ key: "fn", label: "Function", value: fallbackValues.limitsFunction, applied: true });
     }
     if (!options.ramp) {
-      rows.push({ key: "ramp", label: "Ramp", value: "recipients", applied: true });
+      rows.push({ key: "ramp", label: "Ramp", value: fallbackValues.limitsRamp, applied: true });
     }
   }
   if (options.command === "audit" && !options.path) {
@@ -304,6 +789,151 @@ function highlightCommand(command: string): React.ReactNode {
   return parts;
 }
 
+const TOKENS_RUST_EXAMPLE = `use soroban_testkit::core::TestEnv;
+use soroban_testkit::tokens::MockToken;
+
+#[test]
+fn transfer_updates_balances() {
+    let env = TestEnv::new();
+    env.env().mock_all_auths();
+
+    let admin = env.address();
+    let alice = env.address();
+    let bob = env.address();
+
+    let token = MockToken::deploy(&env, &admin);
+    token.mint(&alice, &10_000_000);
+    token.transfer(&alice, &bob, &2_500_000);
+
+    assert_eq!(token.balance(&alice), 7_500_000);
+    assert_eq!(token.balance(&bob), 2_500_000);
+}`;
+void TOKENS_RUST_EXAMPLE;
+
+const COPY_FEEDBACK_MS = 3000;
+const SHORT_FEEDBACK_MS = 1600;
+
+type ActivateFeedback = () => void;
+
+function useCopyFeedback() {
+  const [copied, setCopied] = useState(false);
+  const [copiedCommentsMode, setCopiedCommentsMode] = useState<"with" | "without" | null>(null);
+  const [copiedAsScript, setCopiedAsScript] = useState(false);
+  const [copiedStep, setCopiedStep] = useState<number | null>(null);
+  const [copiedModuleExample, setCopiedModuleExample] = useState<string | null>(null);
+  const [announcement, setAnnouncement] = useState("");
+  const [validationError, setValidationError] = useState("");
+  const feedbackTimers = useRef<number[]>([]);
+  const failureTimer = useRef<number | null>(null);
+  const announcementTimer = useRef<number | null>(null);
+
+  const clearFeedbackTimers = useCallback(() => {
+    feedbackTimers.current.forEach((timer) => window.clearTimeout(timer));
+    feedbackTimers.current = [];
+  }, []);
+
+  const resetFeedback = useCallback(() => {
+    setCopied(false);
+    setCopiedCommentsMode(null);
+    setCopiedAsScript(false);
+    setCopiedStep(null);
+    setCopiedModuleExample(null);
+    setAnnouncement("");
+  }, []);
+
+  const resetCopyLabels = useCallback(() => {
+    clearFeedbackTimers();
+    setCopied(false);
+    setCopiedCommentsMode(null);
+    setCopiedAsScript(false);
+    setCopiedStep(null);
+    setCopiedModuleExample(null);
+  }, [clearFeedbackTimers]);
+
+  const announce = useCallback((message: string, duration = COPY_FEEDBACK_MS) => {
+    if (announcementTimer.current !== null) {
+      window.clearTimeout(announcementTimer.current);
+    }
+    setAnnouncement(message);
+    announcementTimer.current = window.setTimeout(() => setAnnouncement(""), duration);
+  }, []);
+
+  // Every new copy action cancels the previous reset timer, so an old timer
+  // can never clear the feedback of a newer copy (#16).
+  const showFeedback = useCallback((
+    message: string,
+    activate: ActivateFeedback = () => {},
+    duration = COPY_FEEDBACK_MS,
+  ) => {
+    if (announcementTimer.current !== null) {
+      window.clearTimeout(announcementTimer.current);
+      announcementTimer.current = null;
+    }
+    clearFeedbackTimers();
+    resetFeedback();
+    setValidationError("");
+    activate();
+    setAnnouncement(message);
+    feedbackTimers.current.push(window.setTimeout(resetFeedback, duration));
+  }, [clearFeedbackTimers, resetFeedback]);
+
+  const setCopyValidationError = useCallback((message: string) => {
+    if (failureTimer.current !== null) {
+      window.clearTimeout(failureTimer.current);
+      failureTimer.current = null;
+    }
+    setValidationError(message);
+  }, []);
+
+  const showFailure = useCallback(() => {
+    clearFeedbackTimers();
+    resetFeedback();
+    setCopyValidationError(
+      "Could not copy to clipboard. Select the command and press Ctrl/Cmd+C to copy it manually.",
+    );
+    failureTimer.current = window.setTimeout(() => setValidationError(""), COPY_FEEDBACK_MS);
+  }, [clearFeedbackTimers, resetFeedback, setCopyValidationError]);
+
+  const resetForCommandChange = useCallback(() => {
+    if (announcementTimer.current !== null) {
+      window.clearTimeout(announcementTimer.current);
+      announcementTimer.current = null;
+    }
+    clearFeedbackTimers();
+    resetFeedback();
+    setCopyValidationError("");
+  }, [clearFeedbackTimers, resetFeedback, setCopyValidationError]);
+
+  useEffect(() => () => {
+    clearFeedbackTimers();
+    if (failureTimer.current !== null) window.clearTimeout(failureTimer.current);
+    if (announcementTimer.current !== null) window.clearTimeout(announcementTimer.current);
+  }, [clearFeedbackTimers]);
+
+  return {
+    copied,
+    copiedCommentsMode,
+    copiedAsScript,
+    copiedStep,
+    copiedModuleExample,
+    announcement,
+    validationError,
+    showFeedback,
+    showFailure,
+    announce,
+    setCopyValidationError,
+    resetForCommandChange,
+    resetCopyLabels,
+    setCopied,
+    setCopiedCommentsMode,
+    setCopiedAsScript,
+    setCopiedStep,
+    setCopiedModuleExample,
+    setAnnouncement,
+    setValidationError,
+  };
+}
+
 export default function App() {
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const [command, setCommand] = useState<CommandName>("coverage");
@@ -314,20 +944,59 @@ export default function App() {
   const [ramp, setRamp] = useState("recipients");
   const [strict, setStrict] = useState(true);
   const [shell, setShell] = useState<"bash" | "zsh" | "fish" | "sh">("bash");
-  const [copied, setCopied] = useState(false);
-  const [copiedStep, setCopiedStep] = useState<number | null>(null);
-  const [copiedWithComments, setCopiedWithComments] = useState(false);
-  const [copiedAsScript, setCopiedAsScript] = useState(false);
+  // Copy buttons change their label, which screen readers often skip; the
+  // polite live region announces the result explicitly (#108, #16).
+  const {
+    copied,
+    copiedStep,
+    copiedModuleExample,
+    copiedCommentsMode,
+    copiedAsScript,
+    announcement,
+    validationError,
+    showFeedback,
+    showFailure,
+    announce,
+    setCopyValidationError,
+    resetForCommandChange,
+    resetCopyLabels,
+    setCopied,
+    setCopiedCommentsMode,
+    setCopiedAsScript,
+    setCopiedStep,
+    setCopiedModuleExample,
+    setAnnouncement,
+    setValidationError,
+  } = useCopyFeedback();
+  const [includeComments, setIncludeComments] = useState(() => {
+    try {
+      const savedPreference = window.localStorage.getItem(COPY_COMMENTS_PREFERENCE_KEY);
+      if (savedPreference === "true" || savedPreference === "false") {
+        return savedPreference === "true";
+      }
+    } catch {
+      return true;
+    }
+    return true;
+  });
   // Issue #143: Command history for restore functionality
   const [commandHistory, setCommandHistory] = useState<CommandOptions[]>([]);
-  // Copy buttons change their label, which screen readers often skip; this
-  // polite live region announces the result explicitly (#108).
-  const [announcement, setAnnouncement] = useState("");
   const [moduleFilter, setModuleFilter] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<ModuleCategory | null>(null);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
+  const [expandedModuleCards, setExpandedModuleCards] = useState<Record<string, boolean>>({});
+  const [moduleTocOpen, setModuleTocOpen] = useState(false);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const moduleSearchRef = useRef<HTMLInputElement>(null);
+  // #101 — focus the command section heading after a mode switch
+  const commandHeadingRef = useRef<HTMLHeadingElement>(null);
+ fix/command-shell-mobile-tabs-copy-12-15
+  const commandKeyboardSelectionRef = useRef(false);
+
+  // Stable focus targets when the history panel or its controls unmount (#343).
+  const historyToggleRef = useRef<HTMLButtonElement>(null);
+  const copyButtonRef = useRef<HTMLButtonElement>(null);
+ main
 
   // Resetting from the empty state removes the button that had focus, so move
   // focus back to the search box instead of dropping it to <body> (#123).
@@ -339,20 +1008,68 @@ export default function App() {
   const [coverageOrder, setCoverageOrder] = useState<OptionalArgKey[]>(defaultCoverageOrder);
   const [multilineEditor, setMultilineEditor] = useState(false);
   const [advancedCommand, setAdvancedCommand] = useState("");
+  const advancedCommandLineCount = advancedCommand ? advancedCommand.split("\n").length : 0;
   const [activeWorkflow, setActiveWorkflow] = useState<WorkflowTabId>("coverage");
   const [compareOpen, setCompareOpen] = useState(false);
   const [configB, setConfigB] = useState<CommandOptions | null>(null);
   const [coverageGuideOpen, setCoverageGuideOpen] = useState(false);
   const [auditGuideOpen, setAuditGuideOpen] = useState(false);
+  const auditGuideScroll = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const top = auditGuideScroll.current;
+    auditGuideScroll.current = null;
+    if (top !== null && window.scrollY !== top) {
+      window.scrollTo({ top, behavior: "instant" });
+    }
+  }, [auditGuideOpen]);
   const [checkedPrerequisites, setCheckedPrerequisites] = useState<Record<string, boolean>>({});
   const [installFaqOpen, setInstallFaqOpen] = useState(false);
   const [auditWarningsGuideOpen, setAuditWarningsGuideOpen] = useState(false);
   const [limitsInterpretationGuideOpen, setLimitsInterpretationGuideOpen] = useState(false);
+  // Issue #85: Prerequisites checklist for limits workflow
+  const [limitsPrerequisitesOpen, setLimitsPrerequisitesOpen] = useState(false);
+  // Issue #83: Preflight checklist for limits workflow
+  const [limitsPreflightOpen, setLimitsPreflightOpen] = useState(false);
+  const [checkedLimitsPrerequisites, setCheckedLimitsPrerequisites] = useState<Record<string, boolean>>({});
+  const [checkedLimitsPreflight, setCheckedLimitsPreflight] = useState<Record<string, boolean>>({});
+  // Issue #86: Advanced options for limits workflow
+  const [limitsAdvancedOpen, setLimitsAdvancedOpen] = useState(false);
+  const [, setLimitsAdvancedValues] = useState<Record<string, string>>({});
+  // Issue #81: Prerequisites checklist for coverage workflow
+  const [coveragePrerequisitesOpen, setCoveragePrerequisitesOpen] = useState(false);
+  const [checkedCoveragePrerequisites, setCheckedCoveragePrerequisites] = useState<Record<string, boolean>>({});
+  // Issue #78: Preflight checklist for coverage workflow
+  const [coveragePreflightOpen, setCoveragePreflightOpen] = useState(false);
+  const [checkedCoveragePreflight, setCheckedCoveragePreflight] = useState<Record<string, boolean>>({});
+  // Issue #69: Troubleshooting FAQ for the auth module
+  const [openAuthFaqIds, setOpenAuthFaqIds] = useState<Record<string, boolean>>({});
+  // Issue #57: Troubleshooting FAQ for the money module
+  const [openMoneyFaqIds, setOpenMoneyFaqIds] = useState<Record<string, boolean>>({});
+  const [openCoreFaqIds, setOpenCoreFaqIds] = useState<Record<string, boolean>>({});
+  // Issue #79: Advanced options for coverage workflow
+  const [coverageAdvancedOpen, setCoverageAdvancedOpen] = useState(false);
+  const [, setCoverageAdvancedValues] = useState<Record<string, string>>({});
+  // Issue #80: Ready-to-run examples for coverage workflow
+  const [coverageExamplesOpen, setCoverageExamplesOpen] = useState(false);
+  // Issue #84: Coverage command reference
+  const [coverageCommandReferenceOpen, setCoverageCommandReferenceOpen] = useState(false);
   const [multiContractExamplesOpen, setMultiContractExamplesOpen] = useState(false);
+  // Issue #63: Troubleshooting FAQ for the tokens module
+  // Issue #60: Runnable Rust example for the tokens module
+  // Issue #62: Troubleshooting FAQ for the events module
+  // Issue #61: Quick-start walkthrough for the events module
   const comparePanelRef = useRef<HTMLDivElement>(null);
+  // Issue #34 — generated command output, selected when the clipboard is blocked
+  const commandOutputRef = useRef<HTMLElement>(null);
+  const commandOutputPanelRef = useRef<HTMLDivElement>(null);
+  // Issue #35 — field inputs whose Clear button unmounts itself, so focus is restored
+  const pathInputRef = useRef<HTMLInputElement>(null);
+  const fnInputRef = useRef<HTMLInputElement>(null);
+  const rampInputRef = useRef<HTMLInputElement>(null);
   // #117 — mobile nav toggle
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileMenuRef = useRef<HTMLDivElement>(null);
+  const mobileMenuToggleRef = useRef<HTMLButtonElement>(null);
   // #116 — accessibility statement modal
   const [a11yOpen, setA11yOpen] = useState(false);
   // #174 — release notes modal
@@ -364,6 +1081,12 @@ export default function App() {
   const [_glossaryOpen, _setGlossaryOpen] = useState(false);
   // #147 — command history UI toggle
   const [historyOpen, setHistoryOpen] = useState(false);
+  // #266 — incremented when the "jump to Audit output" shortcut is pressed
+  const [auditOutputFocusRequest, setAuditOutputFocusRequest] = useState(0);
+  // #261 — incremented when the "jump to Limits output" shortcut is pressed
+  const [limitsOutputFocusRequest, setLimitsOutputFocusRequest] = useState(0);
+  // #356 — incremented when the "jump to Coverage output" shortcut is pressed
+  const [coverageOutputFocusRequest, setCoverageOutputFocusRequest] = useState(0);
   
   // Prevent unused variable warnings
   void _featureMatrixOpen;
@@ -380,6 +1103,36 @@ export default function App() {
           event.preventDefault();
           document.getElementById("module-search")?.focus();
         }
+        return;
+      }
+
+      // #356 — Ctrl/Cmd + Shift + C selects Coverage and jumps directly to
+      // the generated command output. The chord is allowed from fields too,
+      // matching the existing Audit shortcut behavior.
+      if (event.shiftKey && event.key.toLowerCase() === "c") {
+        event.preventDefault();
+        setCommand("coverage");
+        setCoverageOutputFocusRequest((request) => request + 1);
+        return;
+      }
+
+      // Issue #266 — Ctrl/Cmd + Shift + A jumps straight to the Audit command
+      // output panel. The focus effect below documents and applies the full
+      // expected behavior. This chord is deliberately allowed while focus is
+      // inside a field (e.g. the strict-mode checkbox or multiline editor).
+      if (event.shiftKey && event.key.toLowerCase() === "a") {
+        event.preventDefault();
+        setCommand("audit");
+        setAuditOutputFocusRequest((request) => request + 1);
+        return;
+      }
+
+      // Issue #261 — Ctrl/Cmd + Shift + L jumps straight to the Limits command
+      // output panel, including from inside form fields.
+      if (event.shiftKey && event.key.toLowerCase() === "l") {
+        event.preventDefault();
+        setCommand("limits");
+        setLimitsOutputFocusRequest((request) => request + 1);
         return;
       }
 
@@ -405,6 +1158,16 @@ export default function App() {
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  // Reset transient copy feedback in the same event that switches workflows.
+  // Avoid cascading state updates from an effect watching command.
+  // #20 — announce which command is now active so screen-reader users hear the
+  // switch instead of relying on the button label or a silent input reset.
+  const changeCommand = (next: CommandName) => {
+    setCommand(next);
+    resetForCommandChange();
+    setAnnouncement(`Active command: ${next}`);
+  };
+
   const options = useMemo<CommandOptions>(
     () => ({
       command,
@@ -422,6 +1185,35 @@ export default function App() {
   );
 
   const generated = useMemo(() => buildCommand(options), [options]);
+  const generatedRef = useRef(generated);
+
+  // #329 — Expected behavior: coverage's preflight checklist starts unchecked,
+  // which is not a valid state for generating a command. Keep the live preview
+  // available, but flag the invalid default beside the output until every item
+  // is confirmed. Other workflows have no coverage preflight, so they are silent.
+  const coveragePreflightIncomplete =
+    command === "coverage" &&
+    coveragePreflight.some((item) => !checkedCoveragePreflight[item.id]);
+
+  useEffect(() => {
+    generatedRef.current = generated;
+  }, [generated]);
+
+  useEffect(() => {
+    resetCopyLabels();
+  }, [command, generated, resetCopyLabels]);
+
+  const handleReset = () => {
+    setPath(".");
+    setFormat("html");
+    setOpen(true);
+    setFn("batch_payout");
+    setRamp("recipients");
+    setStrict(true);
+    setShell("bash");
+    setCoverageOrder(defaultCoverageOrder);
+    setMultilineEditor(false);
+  };
 
   const toggleAdvancedEditor = () => {
     if (multilineEditor) {
@@ -486,7 +1278,7 @@ export default function App() {
 
   const resetBuilder = () => {
     if (!window.confirm("Reset the command builder to its default values?")) return;
-    setCommand("coverage");
+    changeCommand("coverage");
     setPath(".");
     setFormat("html");
     setOpen(true);
@@ -533,7 +1325,7 @@ export default function App() {
     if (commandHistory.length === 0) return;
     
     const previous = commandHistory[0];
-    setCommand(previous.command);
+    changeCommand(previous.command);
     setPath(previous.path);
     setFormat(previous.format);
     setOpen(previous.open);
@@ -545,19 +1337,26 @@ export default function App() {
     
     // Remove from history after restoring
     setCommandHistory((prev) => prev.slice(1));
-    setAnnouncement("Previous command restored");
+    announce("Previous command restored", SHORT_FEEDBACK_MS);
   };
 
   const applyAdvancedCommand = () => {
     const tokens = advancedCommand.match(/"[^"]+"|'[^']+'|[^\s]+/g) ?? [];
-    if (tokens.length === 0) return;
+    if (tokens.length === 0) {
+      setValidationError("Enter a multiline command before applying it.");
+      return;
+    }
 
     const [tool, selectedCommand, ...args] = tokens;
-    if (tool !== "soroban-testkit") return;
+    if (tool !== "soroban-testkit") {
+      setValidationError("Multiline commands must start with soroban-testkit.");
+      return;
+    }
+    setValidationError("");
 
-    if (selectedCommand === "coverage") setCommand("coverage");
-    if (selectedCommand === "limits") setCommand("limits");
-    if (selectedCommand === "audit") setCommand("audit");
+    if (selectedCommand === "coverage") changeCommand("coverage");
+    if (selectedCommand === "limits") changeCommand("limits");
+    if (selectedCommand === "audit") changeCommand("audit");
 
     const stripQuotes = (value: string) => value.replace(/^["']|["']$/g, "");
 
@@ -583,17 +1382,40 @@ export default function App() {
         setPath(stripQuotes(token));
       }
     }
+
+    // #334: the editor is used from a screen reader's virtual cursor, where no
+    // focus or visible-only state change is announced. Use the polite live
+    // region so applying the command is confirmed to assistive technology.
+    announce("Multiline command applied");
+  };
+
+  // Issue #34 — when the clipboard is blocked, select the generated command so
+  // the user can copy it manually (Ctrl/Cmd+C), including keyboard-only users.
+  const selectCommandOutput = () => {
+    const node = commandOutputRef.current;
+    const selection = typeof window.getSelection === "function" ? window.getSelection() : null;
+    if (!node || !selection) return;
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    node.focus();
   };
 
   const copy = async () => {
-    await copyToClipboard(generated);
-    saveToHistory(); // Save to history when copying
-    setCopied(true);
-    setAnnouncement("Command copied to clipboard");
-    window.setTimeout(() => {
-      setCopied(false);
-      setAnnouncement("");
-    }, 1600);
+    const requested = generated;
+    try {
+      await copyToClipboard(requested);
+      if (generatedRef.current !== requested) return;
+      saveToHistory(); // Save to history when copying
+      showFeedback("Command copied to clipboard", () => setCopied(true));
+    } catch {
+      if (generatedRef.current === requested) {
+        // Issue #34 — the command stays selectable so it can still be copied.
+        selectCommandOutput();
+        showFailure();
+      }
+    }
   };
 
   const toggleTheme = () => {
@@ -602,39 +1424,96 @@ export default function App() {
 
   // Issue #144: Copy command with explanatory comments
   const copyWithComments = async () => {
-    const commented = formatCommandWithComments(options);
-    await copyToClipboard(commented);
-    saveToHistory(); // Save to history when copying
-    setCopiedWithComments(true);
-    setAnnouncement("Command with comments copied to clipboard");
-    window.setTimeout(() => {
-      setCopiedWithComments(false);
-      setAnnouncement("");
-    }, 1600);
+    const requested = generated;
+    const includeCommentsForCopy = includeComments;
+    const commandToCopy = includeCommentsForCopy ? formatCommandWithComments(options) : generated;
+    try {
+      await copyToClipboard(commandToCopy);
+      if (generatedRef.current !== requested) return;
+      saveToHistory(); // Save to history when copying
+      showFeedback(
+        includeCommentsForCopy
+          ? "Command with comments copied to clipboard"
+          : "Command without comments copied to clipboard",
+        () => setCopiedCommentsMode(includeCommentsForCopy ? "with" : "without"),
+      );
+    } catch {
+      if (generatedRef.current === requested) showFailure();
+    }
+  };
+
+  const updateIncludeComments = (checked: boolean) => {
+    setIncludeComments(checked);
+    try {
+      window.localStorage.setItem(COPY_COMMENTS_PREFERENCE_KEY, String(checked));
+    } catch {
+      setCopyValidationError("Could not save your comments preference. It will reset when you leave.");
+    }
   };
 
   // Issue #145: Copy command as reusable shell script
   const copyAsScript = async () => {
+    const requested = generated;
     const script = formatCommandAsScript(options);
-    await copyToClipboard(script);
-    saveToHistory(); // Save to history when copying
-    setCopiedAsScript(true);
-    setAnnouncement("Shell script copied to clipboard");
-    window.setTimeout(() => {
-      setCopiedAsScript(false);
-      setAnnouncement("");
-    }, 1600);
+    try {
+      await copyToClipboard(script);
+      if (generatedRef.current !== requested) return;
+      saveToHistory(); // Save to history when copying
+      showFeedback("Shell script copied to clipboard", () => setCopiedAsScript(true));
+    } catch {
+      if (generatedRef.current === requested) showFailure();
+    }
   };
 
   const copyStep = async (index: number, stepCommand: string) => {
-    await copyToClipboard(stepCommand);
-    setCopiedStep(index);
-    setAnnouncement(`Step ${index + 1} command copied to clipboard`);
-    window.setTimeout(() => {
-      setCopiedStep(null);
-      setAnnouncement("");
-    }, 1600);
+    try {
+      await copyToClipboard(stepCommand);
+      showFeedback(
+        `Step ${index + 1} command copied to clipboard`,
+        () => setCopiedStep(index),
+      );
+    } catch {
+      showFailure();
+    }
   };
+
+  const copyModuleExample = async (moduleName: string, exampleCode: string) => {
+    try {
+      await copyToClipboard(exampleCode);
+      showFeedback(
+        `${moduleName} module Rust example copied to clipboard`,
+        () => setCopiedModuleExample(moduleName),
+      );
+    } catch {
+      showFailure();
+    }
+  };
+
+  const renderModuleExample = (moduleName: string, filePath: string, code: string) => (
+    <>
+      <h3>Runnable Rust example</h3>
+      <p>
+        Put this in a test file of your contract crate (for example <code>{filePath}</code>), with{" "}
+        <code>soroban-testkit</code> as a dev-dependency, then run <code>cargo test</code>:
+      </p>
+      <div className="module-code-block">
+        <div className="module-code-header">
+          <span>{filePath}</span>
+          <button
+            type="button"
+            className="button secondary"
+            aria-label={`Copy ${moduleName} module Rust example`}
+            onClick={() => copyModuleExample(moduleName, code)}
+          >
+            {copiedModuleExample === moduleName ? "Copied" : "Copy example"}
+          </button>
+        </div>
+        <pre tabIndex={0} aria-label={`${moduleName} module runnable Rust example`}>
+          <code>{code}</code>
+        </pre>
+      </div>
+    </>
+  );
 
   // #146 — download generated command as shell script
   const downloadCommand = () => {
@@ -648,8 +1527,7 @@ export default function App() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    setAnnouncement("Command script downloaded");
-    window.setTimeout(() => setAnnouncement(""), 1600);
+    announce("Command script downloaded", SHORT_FEEDBACK_MS);
   };
 
   const toggleComparison = () => {
@@ -663,6 +1541,29 @@ export default function App() {
     if (configB) {
       setConfigB({ ...configB, ...updates });
     }
+  };
+
+  // Arrow/Home/End navigation keeps focus within the command tablist.
+  const handleCommandTabKeyDown = (
+    event: KeyboardEvent<HTMLButtonElement>,
+    currentIndex: number,
+  ) => {
+    const nextIndex =
+      event.key === "ArrowRight"
+        ? (currentIndex + 1) % commandNames.length
+        : event.key === "ArrowLeft"
+          ? (currentIndex - 1 + commandNames.length) % commandNames.length
+          : event.key === "Home"
+            ? 0
+            : event.key === "End"
+              ? commandNames.length - 1
+              : -1;
+    if (nextIndex < 0) return;
+    event.preventDefault();
+    const nextCommand = commandNames[nextIndex];
+    if (nextCommand !== command) commandKeyboardSelectionRef.current = true;
+    setCommand(nextCommand);
+    document.getElementById(`command-tab-${nextCommand}`)?.focus();
   };
 
   const handleWorkflowKeyDown = (event: KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
@@ -687,15 +1588,128 @@ export default function App() {
     }
   };
 
+  // #101 — move focus to the command section heading when the workflow tab changes
+  const isFirstRender = useRef(true);
+  useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
+    if (commandKeyboardSelectionRef.current) {
+      commandKeyboardSelectionRef.current = false;
+      return;
+    }
+    commandHeadingRef.current?.focus();
+  }, [command]);
+
+  // Issue #266 — Expected behavior: pressing Ctrl/Cmd + Shift + A from anywhere
+  // on the page selects the Audit workflow (when another workflow is active),
+  // then focuses the "Generated command output" region and scrolls it into view
+  // so keyboard and screen-reader users land directly on the Audit command.
+  // The jump is announced through the polite live region. This effect is
+  // declared after the #101 effect so panel focus wins over the heading focus
+  // that a workflow switch also triggers.
+  useEffect(() => {
+    if (auditOutputFocusRequest === 0) return;
+    const panel = commandOutputPanelRef.current;
+    if (!panel) return;
+    panel.focus();
+    if (typeof panel.scrollIntoView === "function") {
+      panel.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    announce("Jumped to the Audit command output panel");
+  }, [auditOutputFocusRequest, announce]);
+
+  // Issue #261 — Expected behavior: pressing Ctrl/Cmd + Shift + L from anywhere
+  // on the page selects the Limits workflow (when another workflow is active),
+  // then focuses the "Generated command output" region and scrolls it into view
+  // so keyboard and screen-reader users land directly on the Limits command.
+  // The jump is announced through the polite live region. This effect is
+  // declared after the #101 and #266 effects so panel focus wins over the
+  // heading focus that a workflow switch also triggers.
+  useEffect(() => {
+    if (limitsOutputFocusRequest === 0) return;
+    const panel = commandOutputPanelRef.current;
+    if (!panel) return;
+    panel.focus();
+    if (typeof panel.scrollIntoView === "function") {
+      panel.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    announce("Jumped to the Limits command output panel");
+  }, [limitsOutputFocusRequest, announce]);
+
+  // #356 — Expected behavior: Ctrl/Cmd+Shift+C switches to Coverage when
+  // necessary, then focuses and scrolls the shared generated-output region.
+  useEffect(() => {
+    if (coverageOutputFocusRequest === 0) return;
+    const panel = commandOutputPanelRef.current;
+    if (!panel) return;
+    panel.focus();
+    if (typeof panel.scrollIntoView === "function") {
+      panel.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+    announce("Jumped to the Coverage command output panel");
+  }, [coverageOutputFocusRequest, announce]);
+
+  // #102, #350, #264 — validate required fields and announce actionable errors.
+  const validateAndCopy = async () => {
+    if (command === "audit" && !path.trim()) {
+      setCopyValidationError(
+        "Audit source path is required. Enter the contract source directory (for example, ./src).",
+      );
+      return;
+    }
+    if (!path.trim()) {
+      setCopyValidationError(
+        command === "coverage"
+          ? "Project or contract path is required for Coverage. Enter a Cargo workspace directory such as . or ./contracts/token before copying the command."
+          : "Project or contract path is required.",
+      );
+      if (command === "coverage") pathInputRef.current?.focus();
+      return;
+    }
+    if (command === "limits") {
+      if (!fn.trim()) {
+        setCopyValidationError("Function name is required.");
+        return;
+      }
+      if (!ramp.trim()) {
+        setCopyValidationError("Ramp parameter is required.");
+        return;
+      }
+    }
+    setCopyValidationError("");
+    await copy();
+  };
+
   const fieldClasses = "field-input";
+  // #19 — show the value the generated command actually falls back to when
+  // the path field is empty, most importantly ./src for audit.
+  const pathPlaceholder =
+    command === "audit"
+      ? fallbackValues.auditPath
+      : command === "limits"
+        ? fallbackValues.limitsContract
+        : ".";
 
   return (
     <main data-theme={theme}>
       <a className="skip-link" href="#top">
         Skip to main content
       </a>
-      <p className="sr-only" aria-live="polite">
+      <p
+        className="sr-only"
+        role={announcement ? "status" : undefined}
+        aria-label={announcement ? "Command copy status" : undefined}
+        aria-live="polite"
+        aria-atomic="true"
+        data-testid="copy-status"
+      >
         {announcement}
+      </p>
+      {/* #102 — validation errors announced via assertive live region */}
+      <p className="sr-only" aria-live="assertive" role="alert">
+        {validationError}
       </p>
       <nav aria-label="Main navigation">
         <a className="brand" href="#top" aria-label="Soroban Testkit home">
@@ -706,6 +1720,7 @@ export default function App() {
         <button
           type="button"
           className="mobile-menu-toggle"
+          ref={mobileMenuToggleRef}
           aria-expanded={mobileMenuOpen}
           aria-controls="mobile-menu"
           aria-label={mobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
@@ -713,7 +1728,18 @@ export default function App() {
         >
           <span aria-hidden="true">{mobileMenuOpen ? "✕" : "☰"}</span>
         </button>
-        <div className="nav-links" id="mobile-menu" ref={mobileMenuRef} data-open={mobileMenuOpen}>
+        <div
+          className="nav-links"
+          id="mobile-menu"
+          ref={mobileMenuRef}
+          data-open={mobileMenuOpen}
+          onKeyDown={(event) => {
+            if (event.key !== "Escape") return;
+            event.preventDefault();
+            setMobileMenuOpen(false);
+            mobileMenuToggleRef.current?.focus();
+          }}
+        >
           {navSections.map((section) => (
             <a
               key={section.id}
@@ -832,7 +1858,7 @@ export default function App() {
         </aside>
       </section>
 
-      <section className="modules" id="modules" tabIndex={-1}>
+      <section className="modules" id="modules" aria-labelledby="modules-heading" tabIndex={-1}>
         {selectedModuleData ? (
           <article className="module-detail">
             {/* #136 — visible page title for deep-linked views */}
@@ -844,8 +1870,466 @@ export default function App() {
               <span aria-current="page">{selectedModuleData.name}</span>
             </nav>
             <p className="eyebrow">{selectedModuleData.category}</p>
-            <h2>{selectedModuleData.name}</h2>
+            <h2 id="modules-heading">{selectedModuleData.name}</h2>
             <p>{selectedModuleData.description}</p>
+            {selectedModuleData.name === "core" && (
+              <>
+                {/* Issue #33 — concise API overview for the core module */}
+                <div className="module-doc-section">
+                  <h3>API overview</h3>
+                  <dl className="version-details">
+                    {coreApiOverview.map((item) => (
+                      <Fragment key={item.symbol}>
+                        <dt>
+                          <code>{item.symbol}</code>
+                        </dt>
+                        <dd>{item.summary}</dd>
+                      </Fragment>
+                    ))}
+                  </dl>
+                </div>
+                <div className="module-version-info">
+                  <h3>Version and compatibility</h3>
+                  <dl className="version-details">
+                    <dt>Current version</dt>
+                    <dd>soroban-testkit core API with Soroban SDK 27.0.x and later</dd>
+
+                    <dt>Minimum Rust version</dt>
+                    <dd>Rust 1.84 or later with the wasm32v1-none target</dd>
+
+                    <dt>Environment support</dt>
+                    <dd>
+                      <code>TestEnv</code> wraps <code>soroban_sdk::Env</code>; use <code>env.env()</code> for SDK
+                      calls the core module does not expose directly.
+                    </dd>
+
+                    <dt>Network support</dt>
+                    <dd>
+                      Tests run locally without RPC. Testnet and Mainnet behavior is represented by in-memory
+                      ledger state.
+                    </dd>
+                  </dl>
+                  <h3>Known considerations</h3>
+                  <ul>
+                    <li>
+                      <strong>Deterministic seeds:</strong> Use <code>TestEnv::with_seed(n)</code> when generated
+                      addresses must repeat across runs.
+                    </li>
+                    <li>
+                      <strong>Error classification:</strong> Match on <code>TestkitError::code()</code> rather than
+                      panic message text.
+                    </li>
+                    <li>
+                      <strong>State resets:</strong> Recreate addresses, clients, and <code>Env</code> handles after
+                      <code>reset()</code>.
+                    </li>
+                  </ul>
+                </div>
+                <div className="module-doc-section">
+                  <h3>Troubleshooting FAQ</h3>
+                  <div className="core-faq-list">
+                    {coreTroubleshootingFaq.map((item) => {
+                      const isOpen = openCoreFaqIds[item.id] ?? false;
+                      return (
+                        <div key={item.id} className="guide-card">
+                          <div className="guide-header">
+                            <button
+                              type="button"
+                              className="guide-toggle"
+                              aria-expanded={isOpen}
+                              aria-controls={`core-faq-panel-${item.id}`}
+                              onClick={() =>
+                                setOpenCoreFaqIds((prev) => ({ ...prev, [item.id]: !isOpen }))
+                              }
+                            >
+                              {item.question}
+                            </button>
+                          </div>
+                          {isOpen && (
+                            <div id={`core-faq-panel-${item.id}`} className="guide-panel">
+                              <p><strong>Cause:</strong> {item.cause}</p>
+                              <p><strong>Solution:</strong> {item.solution}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+            {/* Issue #51: Version and compatibility notes for the ledger module */}
+            {selectedModuleData.name === "ledger" && (
+              <div className="module-version-info">
+                <h3>Version and compatibility</h3>
+                <dl className="version-details">
+                  <dt>Current version</dt>
+                  <dd>Soroban SDK 27.0.x and later</dd>
+
+                  <dt>Minimum Rust version</dt>
+                  <dd>Rust 1.84 or later with wasm32v1-none target</dd>
+
+                  <dt>Stellar network support</dt>
+                  <dd>Compatible with Testnet and Mainnet ledger sequence and timestamp semantics.</dd>
+
+                  <dt>Clock &amp; sequence control</dt>
+                  <dd>
+                    Uses in-memory mock ledger state via <code>env.ledger()</code> with deterministic timestamp and
+                    sequence warping.
+                  </dd>
+                </dl>
+                <h3>Known considerations</h3>
+                <ul>
+                  <li>
+                    <strong>Monotonic progression:</strong> Advance ledger sequences and timestamps forward; warping
+                    backward can invalidate TTL or time-lock assumptions.
+                  </li>
+                  <li>
+                    <strong>Offline deterministic state:</strong> All ledger time and sequence changes run in-memory
+                    with zero network RPC calls.
+                  </li>
+                  <li>
+                    <strong>TTL interaction:</strong> Advancing the ledger sequence also ages persistent and temporary
+                    storage entries—pair with <code>ttl</code> checks when testing expiration.
+                  </li>
+                </ul>
+              </div>
+            )}
+            {/* Issue #82: Version and compatibility notes for the ttl module */}
+            {selectedModuleData.name === "ttl" && (
+              <div className="module-version-info">
+                <h3>API overview</h3>
+                <dl className="version-details">
+                  <dt><code>ttl_of(&env, storage_kind, key)</code></dt>
+                  <dd>Reads the current TTL (in ledger entries) for a storage entry. Returns the remaining lifetime before expiry.</dd>
+
+                  <dt><code>assert_bumps_ttl(&env, storage_kind, key, closure)</code></dt>
+                  <dd>Asserts that the closure extends the TTL for the given entry. Fails if the TTL does not increase.</dd>
+
+                  <dt><code>assert_survives_expiry(storage_kind, closure)</code></dt>
+                  <dd>Asserts that the closure handles expired data gracefully (no panics or unwraps on missing values).</dd>
+
+                  <dt><code>expire_all()</code></dt>
+                  <dd>Advances the ledger past <code>max_entry_ttl</code>, expiring all storage entries of all kinds.</dd>
+                </dl>
+                <p><strong>Storage kinds:</strong> Use <code>StorageKind::Persistent</code> for long-lived state (~6 months), <code>StorageKind::Temporary</code> for short-lived state (~100 days), or <code>StorageKind::Instance</code> for per-contract TTLs.</p>
+
+                <h3>Quick example</h3>
+                <pre><code>{`env.assert_bumps_ttl(&contract_id, StorageKind::Persistent, symbol_short!("key"), || {
+    client.touch(&symbol_short!("key"));
+});`}</code></pre>
+
+                <h3>Common failure modes</h3>
+                <ul>
+                  <li><strong><code>ttl_of</code> panics or returns None:</strong> The entry does not exist or has already expired. Write it first, and read the TTL before calling <code>expire_all()</code> or advancing the ledger too far.</li>
+                  <li><strong>Expected TTL to extend but it didn't:</strong> The closure did not call a function that extends the TTL. Verify that your contract client is calling the right method.</li>
+                  <li><strong>Contract panics on expired data:</strong> The contract read an expired entry with <code>.unwrap()</code>. Use <code>unwrap_or()</code>, <code>has()</code>, or <code>Option</code> patterns instead.</li>
+                  <li><strong>Different TTLs for Persistent vs. Temporary:</strong> Temporary storage expires much faster (~100 days vs. ~6 months). Use the correct <code>StorageKind</code> in your test.</li>
+                  <li><strong>Instance storage ignores the key:</strong> Instance storage has one TTL per contract. Use <code>StorageKind::Persistent</code> or <code>Temporary</code> for per-key lifetimes.</li>
+                </ul>
+
+                <h3>Version and compatibility</h3>
+                <dl className="version-details">
+                  <dt>Current version</dt>
+                  <dd>Soroban SDK 27.0.x and later</dd>
+
+                  <dt>Minimum Rust version</dt>
+                  <dd>Rust 1.84 or later with wasm32v1-none target</dd>
+
+                  <dt>Stellar network support</dt>
+                  <dd>Compatible with Testnet and Mainnet. TTL values are determined by the Soroban ledger context.</dd>
+
+                  <dt>Ledger compatibility</dt>
+                  <dd>Requires Soroban ledger functionality enabled. Use <code>env.ledger()</code> to access current ledger sequence and TTL calculations.</dd>
+                </dl>
+                <h3>Known considerations</h3>
+                <ul>
+                  <li><strong>Ledger sequence requirements:</strong> Ensure your test environment has a properly initialized ledger state. TTL calculations depend on accurate sequence numbers.</li>
+                  <li><strong>Storage extension cost:</strong> Calling <code>env.storage().instance().extend_ttl()</code> consumes ledger resources. Plan for this in resource-sensitive contracts.</li>
+                  <li><strong>Deterministic testing:</strong> TTL values in tests are deterministic. Use <code>env.ledger().sequence()</code> to control ledger time explicitly.</li>
+                  <li><strong>Persistent vs. temporary:</strong> Different storage types (persistent vs. temporary) have different TTL semantics. Test both using the testkit module.</li>
+                </ul>
+              </div>
+            )}
+            {selectedModuleData.name === "events" && (
+              <>
+                <div className="module-doc-section">
+                  <h3>API overview</h3>
+                  <dl className="version-details">
+                    {eventsApiOverview.map((item) => (
+                      <Fragment key={item.symbol}>
+                        <dt>
+                          <code>{item.symbol}</code>
+                        </dt>
+                        <dd>{item.summary}</dd>
+                      </Fragment>
+                    ))}
+                  </dl>
+                  {renderModuleExample("events", "tests/events.rs", eventsExampleCode)}
+                  <h3>Common failure modes</h3>
+                  <ul>
+                    {eventsFailureModes.map((mode) => (
+                      <li key={mode.title}>
+                        <strong>{mode.title}:</strong> {mode.detail}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {/* Issue #59: Version and compatibility notes for the events module */}
+                <div className="module-version-info">
+                  <h3>Version and compatibility</h3>
+                  <dl className="version-details">
+                    <dt>Current version</dt>
+                    <dd>Soroban SDK 27.0.x and later</dd>
+
+                    <dt>Minimum Rust version</dt>
+                    <dd>Rust 1.84 or later with wasm32v1-none target</dd>
+
+                    <dt>Stellar network support</dt>
+                    <dd>Compatible with Testnet and Mainnet contract event encoding (<code>env.events().publish(...)</code> and XDR <code>ContractEvent</code>).</dd>
+                  </dl>
+                  <h3>Known considerations</h3>
+                  <ul>
+                    <li><strong>Scoped to closure:</strong> <code>EventLog::capture(&amp;env, || &#123; ... &#125;)</code> records only events emitted during the closure; setup calls outside are excluded.</li>
+                    <li><strong>Cross-contract filtering:</strong> Cross-contract calls emit events under each emitting contract&apos;s address; use <code>log.for_contract(&amp;contract_id)</code> to isolate events.</li>
+                    <li><strong>Strict topic and payload typing:</strong> Soroban distinguishes <code>Symbol</code> (<code>symbol_short!</code> / <code>Symbol::new</code>) from <code>String</code> and requires exact XDR numeric widths (<code>i128</code> vs <code>u128</code>).</li>
+                  </ul>
+                </div>
+              </>
+            )}
+            {selectedModuleData.name === "money" && (
+              <>
+                <div className="module-doc-section">
+                  <h3>API overview</h3>
+                  <dl className="version-details">
+                    {moneyApiOverview.map((item) => (
+                      <Fragment key={item.symbol}>
+                        <dt>
+                          <code>{item.symbol}</code>
+                        </dt>
+                        <dd>{item.summary}</dd>
+                      </Fragment>
+                    ))}
+                  </dl>
+                  <h3>Quick-start walkthrough</h3>
+                  <ol>
+                    {moneyQuickStartSteps.map((step) => (
+                      <li key={step.title}>
+                        <strong>{step.title}:</strong> {step.detail}
+                      </li>
+                    ))}
+                  </ol>
+                  {renderModuleExample("money", "tests/money.rs", moneyExampleCode)}
+                  <h3>Common failure modes</h3>
+                  <ul>
+                    {moneyFailureModes.map((mode) => (
+                      <li key={mode.title}>
+                        <strong>{mode.title}:</strong> {mode.detail}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {/* Issue #55: Version and compatibility notes for the money module */}
+                <div className="module-version-info">
+                  <h3>Version and compatibility</h3>
+                  <dl className="version-details">
+                    <dt>Current version</dt>
+                    <dd>Soroban SDK 27.0.x and later</dd>
+
+                    <dt>Minimum Rust version</dt>
+                    <dd>Rust 1.84 or later with wasm32v1-none target</dd>
+
+                    <dt>Stellar network support</dt>
+                    <dd>Compatible with Testnet and Mainnet <code>i128</code> / <code>u128</code> arithmetic and Stellar Asset Contract (SEP-41) balance semantics.</dd>
+                  </dl>
+                  <h3>Known considerations</h3>
+                  <ul>
+                    <li><strong>Signed <code>i128</code> token balances:</strong> Soroban SAC balances use signed <code>i128</code>; adversarial boundary inputs test <code>0</code>, <code>1</code>, <code>i128::MAX</code>, and overflow boundaries.</li>
+                    <li><strong>Rounding and dust:</strong> Integer division in fee splits or pro-rata payouts can leave dust; <code>Conservation::new(initial, after).assert_holds()</code> catches leaked or created value.</li>
+                    <li><strong>Multi-step workflows:</strong> Use <code>assert_conserved_over</code> for multi-step lifecycles such as escrow releases or vesting claims so invariants hold after every transition.</li>
+                  </ul>
+                </div>
+                {/* Issue #57: Troubleshooting FAQ for the money module */}
+                <div className="module-doc-section">
+                  <h3>Troubleshooting FAQ</h3>
+                  <div className="auth-faq-list">
+                    {moneyTroubleshootingFaq.map((item) => {
+                      const isOpen = openMoneyFaqIds[item.id] ?? false;
+                      return (
+                        <div key={item.id} className="guide-card">
+                          <div className="guide-header">
+                            <button
+                              type="button"
+                              className="guide-toggle"
+                              aria-expanded={isOpen}
+                              aria-controls={`money-faq-panel-${item.id}`}
+                              onClick={() =>
+                                setOpenMoneyFaqIds((prev) => ({ ...prev, [item.id]: !isOpen }))
+                              }
+                            >
+                              {item.question}
+                            </button>
+                          </div>
+                          {isOpen && (
+                            <div id={`money-faq-panel-${item.id}`} className="guide-panel">
+                              <p>
+                                <strong>Cause:</strong> {item.cause}
+                              </p>
+                              <p>
+                                <strong>Solution:</strong> {item.solution}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
+            {selectedModuleData.name === "tokens" && (
+              <>
+                <div className="module-doc-section">
+                  <h3>API overview</h3>
+                  <dl className="version-details">
+                    {tokensApiOverview.map((item) => (
+                      <Fragment key={item.symbol}>
+                        <dt>
+                          <code>{item.symbol}</code>
+                        </dt>
+                        <dd>{item.summary}</dd>
+                      </Fragment>
+                    ))}
+                  </dl>
+                  <h3>Quick-start walkthrough</h3>
+                  <ol>
+                    {tokensQuickStartSteps.map((step) => (
+                      <li key={step.title}>
+                        <strong>{step.title}:</strong> {step.detail}
+                      </li>
+                    ))}
+                  </ol>
+                  {renderModuleExample("tokens", "tests/tokens.rs", tokensExampleCode)}
+                  <h3>Common failure modes</h3>
+                  <ul>
+                    {tokensFailureModes.map((mode) => (
+                      <li key={mode.title}>
+                        <strong>{mode.title}:</strong> {mode.detail}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                {/* Issue #64: Version and compatibility notes for the tokens module */}
+                <div className="module-version-info">
+                  <h3>Version and compatibility</h3>
+                  <dl className="version-details">
+                    <dt>Current version</dt>
+                    <dd>Soroban SDK 27.0.x and later</dd>
+
+                    <dt>Minimum Rust version</dt>
+                    <dd>Rust 1.84 or later with wasm32v1-none target</dd>
+
+                    <dt>Token standard support</dt>
+                    <dd>Implements the Stellar Asset Contract (SEP-41) token interface (<code>transfer</code>, <code>transfer_from</code>, <code>approve</code>, <code>balance</code>, <code>allowance</code>).</dd>
+
+                    <dt>Stellar network support</dt>
+                    <dd>Compatible with Testnet and Mainnet SAC behavior using deterministic <code>i128</code> amounts.</dd>
+                  </dl>
+                  <h3>Known considerations</h3>
+                  <ul>
+                    <li><strong>Signed <code>i128</code> amounts:</strong> Token amounts and balances use <code>i128</code>; negative values or arithmetic overflows panic just like the Soroban SAC.</li>
+                    <li><strong>Authorization rules:</strong> <code>token.mint</code> uses test admin privileges, while <code>transfer</code> and <code>transfer_from</code> enforce standard SAC authorization.</li>
+                    <li><strong>Test isolation:</strong> Each <code>env.token()</code> test double is scoped to its own <code>TestEnv</code> and never shares balances across tests.</li>
+                  </ul>
+                </div>
+              </>
+            )}
+            {selectedModuleData.name === "auth" && (
+              <>
+                <div className="module-doc-section">
+                  <h3>API overview</h3>
+                  <dl className="version-details">
+                    {authApiOverview.map((item) => (
+                      <Fragment key={item.symbol}>
+                        <dt>
+                          <code>{item.symbol}</code>
+                        </dt>
+                        <dd>{item.summary}</dd>
+                      </Fragment>
+                    ))}
+                  </dl>
+                </div>
+                <div className="module-doc-section">
+                  <h3>Quick-start walkthrough</h3>
+                  <ol>
+                    {authQuickStartSteps.map((step) => (
+                      <li key={step.title}>
+                        <strong>{step.title}:</strong> {step.detail}
+                      </li>
+                    ))}
+                  </ol>
+                  {renderModuleExample("auth", "tests/auth.rs", authExampleCode)}
+                </div>
+                {/* Issue #68: Version and compatibility notes for the auth module */}
+                <div className="module-version-info">
+                  <h3>Version and compatibility</h3>
+                  <dl className="version-details">
+                    <dt>Current version</dt>
+                    <dd>Soroban SDK 27.0.x and later</dd>
+
+                    <dt>Minimum Rust version</dt>
+                    <dd>Rust 1.84 or later with wasm32v1-none target</dd>
+
+                    <dt>Stellar network support</dt>
+                    <dd>Compatible with Testnet and Mainnet authorization semantics (<code>require_auth</code> and <code>require_auth_for_args</code>).</dd>
+
+                    <dt>Mocking compatibility</dt>
+                    <dd>Designed for per-call <code>mock_auths</code> and generated <code>try_*</code> client methods that return <code>Result</code>.</dd>
+                  </dl>
+                  <h3>Known considerations</h3>
+                  <ul>
+                    <li><strong>Avoid <code>mock_all_auths</code> with <code>AuthMatrix</code>:</strong> Global auth mocking bypasses <code>require_auth</code> checks and masks missing authorization gates.</li>
+                    <li><strong>Include an unprivileged caller:</strong> <code>AuthMatrix</code> cross-checks addresses listed as allowed on other entry points; include at least one non-admin address on an open entry point.</li>
+                    <li><strong>Use <code>try_*</code> client methods:</strong> Non-<code>try</code> client methods panic on authorization failure instead of returning <code>Err</code>.</li>
+                  </ul>
+                </div>
+                <div className="module-doc-section">
+                  <h3>Troubleshooting FAQ</h3>
+                  <div className="auth-faq-list">
+                    {authTroubleshootingFaq.map((item) => {
+                      const isOpen = openAuthFaqIds[item.id] ?? false;
+                      return (
+                        <div key={item.id} className="guide-card">
+                          <div className="guide-header">
+                            <button
+                              type="button"
+                              className="guide-toggle"
+                              aria-expanded={isOpen}
+                              aria-controls={`auth-faq-panel-${item.id}`}
+                              onClick={() =>
+                                setOpenAuthFaqIds((prev) => ({ ...prev, [item.id]: !isOpen }))
+                              }
+                            >
+                              {item.question}
+                            </button>
+                          </div>
+                          {isOpen && (
+                            <div id={`auth-faq-panel-${item.id}`} className="guide-panel">
+                              <p>
+                                <strong>Cause:</strong> {item.cause}
+                              </p>
+                              <p>
+                                <strong>Solution:</strong> {item.solution}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </>
+            )}
             <button type="button" className="button secondary" onClick={() => setSelectedModule(null)}>
               Back to all modules
             </button>
@@ -857,7 +2341,7 @@ export default function App() {
             <div className="module-empty-icon" aria-hidden="true">
               !
             </div>
-            <h2>Module not found</h2>
+            <h2 id="modules-heading">Module not found</h2>
             <p>
               The module "{selectedModule}" does not exist in the Soroban Testkit library.
               Check the module name or browse the available modules below.
@@ -874,7 +2358,7 @@ export default function App() {
           <>
             <header>
               <p className="eyebrow">One prelude. Seven focused modules.</p>
-              <h2>Everything a serious contract test needs.</h2>
+              <h2 id="modules-heading">Everything a serious contract test needs.</h2>
               <div className="module-filter-bar">
                 <label htmlFor="module-search" className="sr-only">
                   Filter modules
@@ -887,6 +2371,15 @@ export default function App() {
                   placeholder="Search modules by name or description… (press /)"
                   value={moduleFilter}
                   onChange={(event) => setModuleFilter(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      // #336: native search inputs blur or clear inconsistently.
+                      // Use the same reset as the empty-state "Reset filters"
+                      // action and keep focus in the field for continued typing.
+                      event.preventDefault();
+                      resetModuleFilter();
+                    }
+                  }}
                   aria-label="Search modules by name or description"
                 />
                 {moduleFilter && (
@@ -900,6 +2393,31 @@ export default function App() {
                   </button>
                 )}
               </div>
+              {/* Table of contents remains a real, labelled collapsible navigation list. */}
+              <button
+                type="button"
+                className="module-card-disclosure"
+                aria-expanded={moduleTocOpen}
+                aria-controls="module-toc-list"
+                onClick={() => setModuleTocOpen((prev) => !prev)}
+              >
+                {moduleTocOpen ? "Hide" : "Show"} table of contents
+              </button>
+              <nav aria-label="Module table of contents" hidden={!moduleTocOpen}>
+                <ul id="module-toc-list">
+                  {modules.map((mod) => (
+                    <li key={mod.name}>
+                      <button
+                        type="button"
+                        className="module-card-disclosure"
+                        onClick={() => setSelectedModule(mod.name)}
+                      >
+                        {mod.name}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
               <div className="category-filter-bar" role="group" aria-label="Filter modules by category">
                 <button
                   type="button"
@@ -926,12 +2444,16 @@ export default function App() {
             {filteredModules.length > 0 ? (
               <div className="module-grid" id="module-grid">
                 {filteredModules.map((mod, index) => (
+ feat/issues-190-192-202-display-rhythm-theme
                   <article
                     key={mod.name}
                     className="module-card"
                     tabIndex={0}
                     aria-label={`Module ${mod.name}: ${mod.description}`}
                   >
+
+                  <article key={mod.name} className="module-card" aria-labelledby={`module-heading-${mod.name}`}>
+ main
                     <button
                       type="button"
                       className="module-card-select"
@@ -939,11 +2461,36 @@ export default function App() {
                       onClick={() => setSelectedModule(mod.name)}
                     >
                       <span aria-hidden="true">0{index + 1}</span>
-                      <h3>{mod.name}</h3>
+                      <h3 id={`module-heading-${mod.name}`}>{mod.name}</h3>
                       <p>{mod.description}</p>
                       <span className="module-category-tag">{mod.category}</span>
                     </button>
-                    <div className="module-card-links">
+                    {/* #337: disclose extra information without changing the existing detail navigation. */}
+                    <button
+                      type="button"
+                      className="module-card-disclosure"
+                      aria-expanded={expandedModuleCards[mod.name] ?? false}
+                      aria-controls={`module-details-${mod.name}`}
+                      onClick={() =>
+                        setExpandedModuleCards((prev) => ({ ...prev, [mod.name]: !(prev[mod.name] ?? false) }))
+                      }
+                    >
+                      {expandedModuleCards[mod.name] ? "Hide" : "Show"} {mod.name} module summary
+                    </button>
+                    <div
+                      id={`module-details-${mod.name}`}
+                      className="module-card-details"
+                      hidden={!(expandedModuleCards[mod.name] ?? false)}
+                    >
+                      <p>Testing concerns:</p>
+                      <ul>
+                        {moduleFeatureMatrix[mod.name].map((concern) => (
+                          <li key={concern}>{concern}</li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="module-card-links" role="group" aria-label={`Workflows for ${mod.name} module`}>
+                      <h4 className="sr-only">Available workflows</h4>
                       <a href="#commands" aria-label={`Open the command builder from the ${mod.name} module`}>
                         Command builder
                       </a>
@@ -952,7 +2499,7 @@ export default function App() {
                           key={workflow}
                           href="#commands"
                           aria-label={`Open the ${workflow} workflow related to ${mod.name}`}
-                          onClick={() => setCommand(workflow)}
+                          onClick={() => changeCommand(workflow)}
                         >
                           {workflow}
                         </a>
@@ -962,11 +2509,11 @@ export default function App() {
                 ))}
               </div>
             ) : (
-              <div className="module-empty-state" role="status" aria-live="polite">
+              <div className="module-empty-state" role="status" aria-live="polite" aria-labelledby="module-empty-heading">
                 <div className="module-empty-icon" aria-hidden="true">
                   ∅
                 </div>
-                <h3>{moduleFilter ? `No modules match “${moduleFilter}”` : "No modules match your filters"}</h3>
+                <h3 id="module-empty-heading">{moduleFilter ? `No modules match “${moduleFilter}”` : "No modules match your filters"}</h3>
                 <p>
                   {categoryFilter
                     ? `No testing modules in the ${categoryFilter} category match this search.`
@@ -1123,6 +2670,19 @@ export default function App() {
                     cargo llvm-cov --workspace --lcov --output-path lcov.info
                   </code>
                 </pre>
+                {/* Issue #80 — Ready-to-run examples for coverage workflow */}
+                <div className="coverage-examples" aria-labelledby="coverage-examples-heading">
+                  <h4 id="coverage-examples-heading">Ready-to-run examples</h4>
+                  <div className="example-grid">
+                    {coverageExamples.map((example, index) => (
+                      <div key={index} className="example-card">
+                        <h5>{example.title}</h5>
+                        <p>{example.description}</p>
+                        <pre><code>{example.command}</code></pre>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </>
             )}
             {tab.id === "workspace" && (
@@ -1246,15 +2806,27 @@ export default function App() {
       <section className="commands" id="commands" tabIndex={-1}>
         <div className="command-copy">
           <p className="eyebrow">CLI workbench</p>
-          <h2>From intent to command.</h2>
+          {/* #101 — heading receives focus after workflow tab switch */}
+          <h2 ref={commandHeadingRef} tabIndex={-1}>From intent to command.</h2>
           <p>Configure a supported Testkit workflow and copy the exact command to your terminal.</p>
-          <div className="command-tabs" role="group" aria-label="Command workflow selector">
-            {(["coverage", "limits", "audit"] as const).map((name) => (
+          <div className="command-tabs" role="tablist" aria-label="Command workflow selector">
+            {commandNames.map((name, index) => (
               <button
                 key={name}
+                id={`command-tab-${name}`}
+                type="button"
+                role="tab"
+                aria-selected={command === name}
+                aria-controls="command-workbench-panel"
+                tabIndex={command === name ? 0 : -1}
                 className={command === name ? "active" : ""}
+ fix/command-shell-mobile-tabs-copy-12-15
                 onClick={() => setCommand(name)}
+                onKeyDown={(event) => handleCommandTabKeyDown(event, index)}
+
+                onClick={() => changeCommand(name)}
                 aria-pressed={command === name}
+ main
               >
                 {name}
               </button>
@@ -1287,8 +2859,22 @@ export default function App() {
             </button>
           </div>
 
-          <section className="summary-card" aria-labelledby="command-summary-heading">
+          <section
+            className="summary-card"
+            aria-labelledby="command-summary-heading"
+            tabIndex={0}
+            role="region"
+            aria-label="Active command configuration summary"
+          >
             <h3 id="command-summary-heading">Command summary</h3>
+            <div
+              className="sr-only"
+              aria-live="polite"
+              aria-atomic="true"
+              data-testid="active-command-sr-summary"
+            >
+              Active {command} command settings: {summaryRows.map((row) => `${row.label} is ${row.value}`).join(", ")}.
+            </div>
             <p className="summary-workflow">{command}</p>
             <dl className="summary-settings">
               {summaryRows.map((row) => (
@@ -1313,25 +2899,39 @@ export default function App() {
             Compare two configurations
           </button>
         </div>
-        <div className="builder">
+        <div
+          className="builder"
+          role="tabpanel"
+          id="command-workbench-panel"
+          aria-labelledby={`command-tab-${command}`}
+          tabIndex={0}
+        >
           <label>
             <div className="field-header">
               <span>Project or contract path</span>
               <span className="badge badge-required">Required</span>
             </div>
+            {/* #100 — inline help text associated with the field */}
+            <div id="path-help" className="field-help">
+              Path to the contract workspace or source directory, such as . or ./contracts/token.
+            </div>
             <div className="field-with-clear">
               <input
                 className={fieldClasses}
+                ref={pathInputRef}
                 value={path}
-                onChange={(event) => setPath(event.target.value)}
+                placeholder={pathPlaceholder}
+                onChange={(event) => { setPath(event.target.value); if (event.target.value.trim()) setCopyValidationError(""); }}
                 aria-label="Project or contract path"
                 aria-required="true"
+                aria-invalid={Boolean(validationError) || undefined}
+                aria-describedby="path-help"
               />
               {path && (
                 <button
                   type="button"
                   className="clear-field-button"
-                  onClick={() => setPath("")}
+                  onClick={() => { setPath(""); pathInputRef.current?.focus(); }}
                   aria-label="Clear project or contract path"
                 >
                   Clear
@@ -1378,23 +2978,46 @@ export default function App() {
                   })}
                 </div>
               </div>
-              <label>
-                <div className="field-header">
-                  <span>Report format</span>
-                  <span className="badge badge-optional">Optional</span>
+              {/* #324: native report-format radio group with explicit roles and labels. */}
+              <fieldset className="format-fieldset">
+                <legend id="coverage-format-legend">
+                  Report format <span aria-hidden="true" className="badge badge-optional">Optional</span>
+                </legend>
+                <div id="format-help" className="field-help">
+                  html opens in a browser; lcov feeds into CI coverage tools; text prints to stdout.
                 </div>
-                <select value={format} onChange={(event) => setFormat(event.target.value as typeof format)}>
-                  <option>html</option>
-                  <option>lcov</option>
-                  <option>text</option>
-                </select>
-              </label>
+                <div className="format-radio-group" role="radiogroup" aria-labelledby="coverage-format-legend" aria-describedby="format-help">
+                  {(["html", "lcov", "text"] as const).map((value) => (
+                    <label key={value} className="format-radio-option">
+                      <input
+                        type="radio"
+                        name="coverage-report-format"
+                        value={value}
+                        checked={format === value}
+                        onChange={() => setFormat(value)}
+                        aria-describedby="format-help"
+                      />
+                      <span>{value}</span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
               <label className="check">
                 <span className="check-content">
-                  <input type="checkbox" checked={open} onChange={(event) => setOpen(event.target.checked)} />
+                  {/* #100 — inline help text for open checkbox */}
+                  <input
+                    type="checkbox"
+                    checked={format === "html" && open}
+                    disabled={format !== "html"}
+                    onChange={(event) => setOpen(event.target.checked)}
+                    aria-describedby="open-help"
+                  />
                   <span>Open report when complete</span>
                 </span>
                 <span className="badge badge-optional">Optional</span>
+                <div id="open-help" className="field-help">
+                  Available for HTML reports only. Opens the report in your default browser after generation.
+                </div>
               </label>
             </>
           )}
@@ -1411,8 +3034,9 @@ export default function App() {
                 <div className="field-with-clear">
                   <input
                     className={fieldClasses}
+                    ref={fnInputRef}
                     value={fn}
-                    onChange={(event) => setFn(event.target.value)}
+                    onChange={(event) => { setFn(event.target.value); if (event.target.value.trim()) setCopyValidationError(""); }}
                     aria-label="Function"
                     aria-required="true"
                     aria-describedby="fn-help"
@@ -1421,7 +3045,7 @@ export default function App() {
                     <button
                       type="button"
                       className="clear-field-button"
-                      onClick={() => setFn("")}
+                      onClick={() => { setFn(""); fnInputRef.current?.focus(); }}
                       aria-label="Clear function"
                     >
                       Clear
@@ -1440,8 +3064,9 @@ export default function App() {
                 <div className="field-with-clear">
                   <input
                     className={fieldClasses}
+                    ref={rampInputRef}
                     value={ramp}
-                    onChange={(event) => setRamp(event.target.value)}
+                    onChange={(event) => { setRamp(event.target.value); if (event.target.value.trim()) setCopyValidationError(""); }}
                     aria-label="Ramp parameter"
                     aria-required="true"
                     aria-describedby="ramp-help"
@@ -1450,7 +3075,7 @@ export default function App() {
                     <button
                       type="button"
                       className="clear-field-button"
-                      onClick={() => setRamp("")}
+                      onClick={() => { setRamp(""); rampInputRef.current?.focus(); }}
                       aria-label="Clear ramp parameter"
                     >
                       Clear
@@ -1463,10 +3088,14 @@ export default function App() {
           {command === "audit" && (
             <label className="check">
               <span className="check-content">
-                <input type="checkbox" checked={strict} onChange={(event) => setStrict(event.target.checked)} />
+                {/* #100 — inline help text for strict checkbox */}
+                <input type="checkbox" checked={strict} onChange={(event) => setStrict(event.target.checked)} aria-label="Fail on warnings (Audit strict mode)" aria-describedby="strict-help" />
                 <span>Fail on warnings</span>
               </span>
               <span className="badge badge-optional">Optional</span>
+              <div id="strict-help" className="field-help">
+                When enabled, the audit command exits with a non-zero status if any warnings are found.
+              </div>
             </label>
           )}
 
@@ -1475,7 +3104,11 @@ export default function App() {
               <span>Shell target</span>
               <span className="badge badge-optional">Optional</span>
             </div>
-            <select value={shell} onChange={(event) => setShell(event.target.value as typeof shell)}>
+            {/* #100 — inline help text for shell select */}
+            <div id="shell-help" className="field-help">
+              Adjusts quoting and syntax so the generated command is valid for your shell.
+            </div>
+            <select value={shell} onChange={(event) => setShell(event.target.value as typeof shell)} aria-describedby="shell-help">
               <option value="bash">Bash</option>
               <option value="zsh">Zsh</option>
               <option value="fish">Fish</option>
@@ -1514,113 +3147,251 @@ export default function App() {
             )}
           </section>
 
-          <div className="output">
-            <code data-testid="command-output">{highlightCommand(generated)}</code>
-            <button onClick={copy}>{copied ? "Copied" : "Copy"}</button>
-            {/* #146 — download action for generated shell script */}
-            <button onClick={downloadCommand} className="button-download" aria-label="Download command as shell script">
-              Download
-            </button>
+          {coveragePreflightIncomplete && (
+            <p id="coverage-preflight-validation" className="validation-hint" aria-live="polite">
+              Coverage preflight checklist is still at its unchecked default. Confirm every item before generating a command.
+            </p>
+          )}
+
+          <div
+            ref={commandOutputPanelRef}
+            className="output"
+            role="region"
+            aria-label="Generated command output"
+            aria-describedby="command-output-desc"
+            tabIndex={-1}
+          >
+            <span id="command-output-desc" className="sr-only">
+              Copy this command to your terminal to run the selected workflow.
+            </span>
+            <div
+              className="sr-only"
+              aria-live="polite"
+              data-testid="generated-command-sr-summary"
+            >
+              Active generated command: {generated}
+            </div>
+            {/* Issue #34 — focusable so the command stays selectable without the clipboard */}
+            <code data-testid="command-output" ref={commandOutputRef} tabIndex={0}>
+              {highlightCommand(generated)}
+            </code>
+            <div className="output-actions">
+              <button type="button" className="button-reset" onClick={handleReset}>
+                Reset
+              </button>
+              <button
+                ref={copyButtonRef}
+                onClick={validateAndCopy}
+                aria-describedby={coveragePreflightIncomplete ? "coverage-preflight-validation" : undefined}
+              >
+                {copied ? "Copied" : "Copy"}
+              </button>
+              {/* #146 — download action for generated shell script */}
+              <button
+                onClick={downloadCommand}
+                className="button-download"
+                aria-label="Download command as shell script"
+                aria-describedby={coveragePreflightIncomplete ? "coverage-preflight-validation" : undefined}
+              >
+                Download
+              </button>
+            </div>
           </div>
+
+          {/* #17 — clipboard failures and validation errors must be visible */}
+          {validationError && (
+            <p className="copy-error" data-testid="copy-error">
+              {validationError}
+            </p>
+          )}
 
           {/* Issue #144 & #145: Additional copy options */}
           <div className="copy-options">
+            <label className="copy-comments-preference">
+              <input
+                type="checkbox"
+                checked={includeComments}
+                onChange={(event) => updateIncludeComments(event.currentTarget.checked)}
+              />
+              Include explanatory comments
+            </label>
             <button 
               type="button" 
               className="button secondary" 
               onClick={copyWithComments}
-              aria-label="Copy command with explanatory comments"
+              aria-label={
+                copiedCommentsMode === "with"
+                  ? "Command with explanatory comments copied"
+                  : copiedCommentsMode === "without"
+                    ? "Command without explanatory comments copied"
+                    : includeComments
+                      ? "Copy command with explanatory comments"
+                      : "Copy command without explanatory comments"
+              }
+              aria-describedby={coveragePreflightIncomplete ? "coverage-preflight-validation" : undefined}
             >
-              {copiedWithComments ? "Copied with comments" : "Copy with comments"}
+              {copiedCommentsMode === "with"
+                ? "Copied with comments"
+                : copiedCommentsMode === "without"
+                  ? "Copied without comments"
+                  : includeComments
+                    ? "Copy with comments"
+                    : "Copy without comments"}
             </button>
             <button 
               type="button" 
               className="button secondary" 
               onClick={copyAsScript}
               aria-label="Copy as shell script"
+              aria-describedby={coveragePreflightIncomplete ? "coverage-preflight-validation" : undefined}
             >
               {copiedAsScript ? "Script copied" : "Copy as script"}
             </button>
           </div>
 
-          {/* #147 — session-only command history */}
-          {commandHistory.length > 0 && (
-            <section className="command-history" aria-labelledby="command-history-heading">
-              <div className="command-history-header">
-                <h3 id="command-history-heading">Command history</h3>
-                <button
-                  type="button"
-                  className="history-toggle"
-                  aria-expanded={historyOpen}
-                  onClick={() => setHistoryOpen(!historyOpen)}
-                >
-                  {historyOpen ? "Hide" : "Show"} ({commandHistory.length})
-                </button>
-              </div>
-              {historyOpen && (
-                <div className="command-history-list" role="log" aria-live="polite">
-                  {commandHistory.slice().reverse().map((entry, index) => {
-                    const cmd = buildCommand(entry);
-                    return (
-                      <div key={index} className="command-history-item">
-                        <span className="history-timestamp">
-                          Entry {commandHistory.length - index}
-                        </span>
-                        <code className="history-command">{cmd}</code>
-                        <button
-                          type="button"
-                          onClick={async () => {
+          {/* #147, #348 — keep Command History discoverable before the first copy. */}
+          <section className="command-history" aria-labelledby="command-history-heading">
+            <div className="command-history-header">
+              <h3 id="command-history-heading">Command history</h3>
+              <button
+                type="button"
+                className="history-toggle"
+                ref={historyToggleRef}
+                aria-expanded={historyOpen}
+                aria-controls={historyOpen ? "command-history-list" : undefined}
+                onClick={() => setHistoryOpen((open) => !open)}
+              >
+                {historyOpen ? "Hide" : "Show"} ({commandHistory.length})
+              </button>
+            </div>
+            {historyOpen && (
+              <div
+                className="command-history-list"
+                id="command-history-list"
+                role="log"
+                aria-live="polite"
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    setHistoryOpen(false);
+                    historyToggleRef.current?.focus();
+                  }
+                }}
+              >
+                {commandHistory.length === 0 && (
+                  <p className="command-history-empty">
+                    No commands yet. Copy a generated command to add it to this session history.
+                  </p>
+                )}
+                {commandHistory.slice().reverse().map((entry, index) => {
+                  const cmd = buildCommand(entry);
+                  return (
+                    <div key={index} className="command-history-item">
+                      <span className="history-timestamp">
+                        Entry {commandHistory.length - index}
+                      </span>
+                      <code className="history-command">{cmd}</code>
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          try {
                             await copyToClipboard(cmd);
-                            setAnnouncement(`History command ${commandHistory.length - index} copied`);
-                            window.setTimeout(() => setAnnouncement(""), 1600);
-                          }}
-                          aria-label={`Copy history command ${commandHistory.length - index}`}
-                        >
-                          Copy
-                        </button>
-                      </div>
-                    );
-                  })}
+                            announce(
+                              `History command ${commandHistory.length - index} copied`,
+                              SHORT_FEEDBACK_MS,
+                            );
+                          } catch {
+                            showFailure();
+                          }
+                        }}
+                        aria-label={`Copy history command ${commandHistory.length - index}`}
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  );
+                })}
+                {commandHistory.length > 0 && (
+
                   <button
                     type="button"
                     className="button secondary"
                     onClick={() => {
+                      // Clear unmounts its focused button; return to the persistent Copy action.
+                      copyButtonRef.current?.focus();
                       setCommandHistory([]);
-                      setHistoryOpen(false);
-                      setAnnouncement("Command history cleared");
-                      window.setTimeout(() => setAnnouncement(""), 1600);
+                      announce("Command history cleared", SHORT_FEEDBACK_MS);
                     }}
                   >
                     Clear history
                   </button>
-                </div>
-              )}
-            </section>
-          )}
+                )}
+              </div>
+            )}
+          </section>
 
           <div className="advanced-command-block">
-            <button type="button" className="button secondary" onClick={toggleAdvancedEditor}>
+            <button
+              type="button"
+              className="button secondary"
+              onClick={toggleAdvancedEditor}
+              aria-expanded={multilineEditor}
+              aria-controls="advanced-command-panel"
+            >
               {multilineEditor ? "Hide advanced editor" : "Advanced arguments"}
             </button>
-            {multilineEditor && (
-              <>
-                <label>
-                  <div className="field-header">
-                    <span>Advanced command editor</span>
-                    <span className="badge badge-optional">Multiline</span>
-                  </div>
-                  <textarea
-                    value={advancedCommand}
-                    rows={8}
-                    onChange={(event) => setAdvancedCommand(event.target.value)}
-                    aria-label="Advanced command arguments"
-                  />
+            {/* #334: keep the panel mounted so aria-controls always resolves,
+                and give the textarea a real label, visible help, and a stable
+                place in the virtual cursor reading order. The accessible name
+                now comes from the real <label>, matching the visible text, so
+                no separate aria-label is set (#334). */}
+            <div id="advanced-command-panel" hidden={!multilineEditor}>
+              <div className="field-header">
+                <label id="advanced-command-editor-label" htmlFor="advanced-command-editor">
+                  Advanced command editor
                 </label>
-                <button type="button" className="button primary" onClick={applyAdvancedCommand}>
-                  Apply multiline command
-                </button>
-              </>
-            )}
+                <span className="badge badge-optional">Multiline</span>
+              </div>
+              {command !== "limits" && command !== "audit" && (
+                <p id="advanced-command-help" className="field-help">
+                  Enter a single command across multiple lines. End wrapped lines with a backslash (\).
+                  Quote paths that contain spaces. Apply updates the generated command.
+                </p>
+              )}
+              <textarea
+                id="advanced-command-editor"
+                value={advancedCommand}
+                rows={8}
+                onChange={(event) => {
+                  setAdvancedCommand(event.target.value);
+                  if (event.target.value.trim()) setValidationError("");
+                }}
+                aria-describedby={
+                  command === "limits"
+                    ? "limits-advanced-line-count"
+                    : command === "audit"
+                    ? "audit-editor-count"
+                    : "advanced-command-help"
+                }
+              />
+              {command === "limits" && (
+                <p id="limits-advanced-line-count" className="field-help">
+                  {advancedCommandLineCount} {advancedCommandLineCount === 1 ? "line" : "lines"}
+                </p>
+              )}
+              {/* #351 — Expected behavior: while the Audit multiline editor is open,
+                  show both character and line counts so users can gauge pasted commands
+                  without altering the command text itself. */}
+              {command === "audit" && (
+                <p className="advanced-editor-count" id="audit-editor-count" aria-live="polite">
+                  {advancedCommand.length} characters · {advancedCommand.split("\n").length} lines
+                </p>
+              )}
+              <button type="button" className="button primary" onClick={applyAdvancedCommand}>
+                Apply multiline command
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1688,7 +3459,8 @@ export default function App() {
                     <span className="check-content">
                       <input
                         type="checkbox"
-                        checked={configB.open}
+                        checked={configB.format === "html" && configB.open}
+                        disabled={configB.format !== "html"}
                         onChange={(event) => updateConfigB({ open: event.target.checked })}
                       />
                       <span>Open report when complete</span>
@@ -1729,6 +3501,7 @@ export default function App() {
                     <input
                       type="checkbox"
                       checked={configB.strict}
+                      aria-label="Fail on warnings (configuration B Audit strict mode)"
                       onChange={(event) => updateConfigB({ strict: event.target.checked })}
                     />
                     <span>Fail on warnings</span>
@@ -1925,7 +3698,11 @@ export default function App() {
                 className="guide-toggle"
                 aria-expanded={auditGuideOpen}
                 aria-controls="audit-guide-panel"
-                onClick={() => setAuditGuideOpen((open) => !open)}
+                onClick={() => {
+                  // Keep the viewport at the same page offset when the checklist changes height.
+                  auditGuideScroll.current = window.scrollY;
+                  setAuditGuideOpen((open) => !open);
+                }}
               >
                 {auditGuideOpen ? "Hide tutorial" : "Show tutorial"}
               </button>
@@ -2287,6 +4064,462 @@ soroban-testkit = "0.2.0"`}</code>
           )}
         </article>
 
+        {/* Issue #81: Prerequisites checklist for coverage workflow */}
+        <article className="guide-card">
+          <div className="guide-header">
+            <h3>Coverage workflow: Prerequisites</h3>
+            <button
+              type="button"
+              className="guide-toggle"
+              aria-expanded={coveragePrerequisitesOpen}
+              aria-controls="coverage-prerequisites-panel"
+              onClick={() => setCoveragePrerequisitesOpen((open) => !open)}
+            >
+              {coveragePrerequisitesOpen ? "Hide checklist" : "Show checklist"}
+            </button>
+          </div>
+          {coveragePrerequisitesOpen && (
+            <div id="coverage-prerequisites-panel" className="guide-panel">
+              <fieldset className="coverage-prerequisites">
+                <legend>Before running the coverage workflow, confirm:</legend>
+                {coveragePrerequisites.map((item) => (
+                  <label key={item.id} className="check">
+                    <span className="check-content">
+                      <input
+                        type="checkbox"
+                        checked={checkedCoveragePrerequisites[item.id] ?? false}
+                        onChange={(event) =>
+                          setCheckedCoveragePrerequisites((prev) => ({ ...prev, [item.id]: event.target.checked }))
+                        }
+                      />
+                      <span>{item.label}</span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+              <ol>
+                <li>Ensure Rust is installed via rustup with the wasm32v1-none target available</li>
+                <li>Install cargo-llvm-cov for coverage report generation: <code>cargo install cargo-llvm-cov</code></li>
+                <li>Verify testkit-cli is installed and accessible: <code>soroban-testkit --version</code></li>
+                <li>Run your test suite locally to confirm all tests pass: <code>cargo test</code></li>
+              </ol>
+            </div>
+          )}
+        </article>
+
+        {/* Issue #78: Preflight checklist for coverage workflow */}
+        <article className="guide-card">
+          <div className="guide-header">
+            <h3>Coverage workflow: Preflight checklist</h3>
+            <button
+              type="button"
+              className="guide-toggle preflight-toggle"
+              aria-expanded={coveragePreflightOpen}
+              aria-controls="coverage-preflight-panel"
+              onClick={() => setCoveragePreflightOpen((open) => !open)}
+            >
+              {coveragePreflightOpen ? "Hide checklist" : "Show checklist"}
+            </button>
+          </div>
+          {coveragePreflightOpen && (
+            <div id="coverage-preflight-panel" className="guide-panel">
+              <fieldset className="coverage-preflight">
+                <legend>Before hitting run, verify these:</legend>
+                {coveragePreflight.map((item) => (
+                  <label key={item.id} className="check">
+                    <span className="check-content">
+                      <input
+                        type="checkbox"
+                        checked={checkedCoveragePreflight[item.id] ?? false}
+                        onChange={(event) =>
+                          setCheckedCoveragePreflight((prev) => ({ ...prev, [item.id]: event.target.checked }))
+                        }
+                      />
+                      <span>{item.label}</span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+              <ol>
+                <li>Confirm the target path contains a valid <code>Cargo.toml</code> for your Soroban contract</li>
+                <li>Ensure <code>llvm-tools-preview</code> is installed: <code>rustup component add llvm-tools-preview</code></li>
+                <li>Verify your contract tests pass under <code>cargo test</code> so coverage data is complete</li>
+                <li>Choose <code>html</code> with <code>--open</code> for local inspection, <code>lcov</code> for CI, or <code>text</code> for terminal summaries</li>
+              </ol>
+            </div>
+          )}
+        </article>
+
+        {/* Issue #80: Ready-to-run examples for coverage workflow */}
+        <article className="guide-card">
+          <div className="guide-header">
+            <h3>Coverage workflow: Ready-to-run examples</h3>
+            <button
+              type="button"
+              className="guide-toggle"
+              aria-expanded={coverageExamplesOpen}
+              aria-controls="coverage-examples-guide-panel"
+              onClick={() => setCoverageExamplesOpen((open) => !open)}
+            >
+              {coverageExamplesOpen ? "Hide examples" : "Show examples"}
+            </button>
+          </div>
+          {coverageExamplesOpen && (
+            <div id="coverage-examples-guide-panel" className="guide-panel">
+              <p>
+                Quick reference for common coverage workflow patterns. Copy any command and adjust the path for your project.
+              </p>
+              <div className="coverage-command-examples">
+                {coverageExamples.map((example, index) => (
+                  <div key={index} className="command-example">
+                    <h5>{example.title}</h5>
+                    <p>{example.description}</p>
+                    <pre role="region" aria-label={example.title} tabIndex={0}>
+                      <code>{example.command}</code>
+                    </pre>
+                  </div>
+                ))}
+              </div>
+              <dl className="coverage-examples-reference">
+                <dt><code>--format html</code></dt>
+                <dd>Interactive coverage dashboard. Best for local development and reviewing coverage gaps by file and function.</dd>
+
+                <dt><code>--format lcov</code></dt>
+                <dd>Machine-readable LCOV format for CI/CD integration with GitHub Actions, GitLab CI, Codecov, or Coveralls.</dd>
+
+                <dt><code>--format text</code></dt>
+                <dd>Simple summary output to the terminal. Fast for quick checks without generating report files.</dd>
+
+                <dt><code>--open</code></dt>
+                <dd>Automatically open the HTML report in your default browser after generation (HTML format only).</dd>
+              </dl>
+            </div>
+          )}
+        </article>
+
+        {/* Issue #79: Advanced options for coverage workflow */}
+        <article className="guide-card">
+          <div className="guide-header">
+            <h3>Coverage workflow: Advanced options</h3>
+            <button
+              type="button"
+              className="guide-toggle"
+              aria-expanded={coverageAdvancedOpen}
+              aria-controls="coverage-advanced-panel"
+              onClick={() => setCoverageAdvancedOpen((open) => !open)}
+            >
+              {coverageAdvancedOpen ? "Hide options" : "Show options"}
+            </button>
+          </div>
+          {coverageAdvancedOpen && (
+            <div id="coverage-advanced-panel" className="guide-panel">
+              <p>
+                Customize coverage workflow behavior with these advanced options. All are optional; defaults provide sensible baseline behavior for most projects.
+              </p>
+              <div className="advanced-options-grid">
+                {coverageAdvancedOptions.map((option) => (
+                  <div key={option.id} className="advanced-option">
+                    <label htmlFor={`coverage-advanced-${option.id}`}>
+                      {option.label}
+                    </label>
+                    {option.type === "number" ? (
+                      <input
+                        id={`coverage-advanced-${option.id}`}
+                        type="number"
+                        defaultValue={option.default}
+                        onChange={(e) =>
+                          setCoverageAdvancedValues((prev) => ({ ...prev, [option.id]: e.target.value }))
+                        }
+                        placeholder={option.default}
+                      />
+                    ) : (
+                      <input
+                        id={`coverage-advanced-${option.id}`}
+                        type="checkbox"
+                        defaultChecked={option.default === "true"}
+                        onChange={(e) =>
+                          setCoverageAdvancedValues((prev) => ({ ...prev, [option.id]: e.target.checked ? "true" : "false" }))
+                        }
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <dl className="advanced-options-reference">
+                <dt><code>--threads</code></dt>
+                <dd>Number of parallel test threads. Default: 4. Increase on powerful machines for faster test execution; decrease on resource-constrained environments.</dd>
+
+                <dt><code>--timeout</code></dt>
+                <dd>Per-test timeout in seconds. Default: 300s. Increase for slow tests or complex contract initialization logic.</dd>
+
+                <dt><code>--fail-fast</code></dt>
+                <dd>Stop test execution on the first failure. Useful for rapid iteration; disable for complete coverage reporting.</dd>
+
+                <dt><code>--exact</code></dt>
+                <dd>Run only exact test name matches. Useful for targeting specific test functions without wildcards or substring matching.</dd>
+              </dl>
+            </div>
+          )}
+        </article>
+
+        {/* Issue #85: Prerequisites checklist for limits workflow */}
+        <article className="guide-card">
+          <div className="guide-header">
+            <h3>Limits workflow: Prerequisites</h3>
+            <button
+              type="button"
+              className="guide-toggle"
+              aria-expanded={limitsPrerequisitesOpen}
+              aria-controls="limits-prerequisites-panel"
+              onClick={() => setLimitsPrerequisitesOpen((open) => !open)}
+            >
+              {limitsPrerequisitesOpen ? "Hide checklist" : "Show checklist"}
+            </button>
+          </div>
+          {limitsPrerequisitesOpen && (
+            <div id="limits-prerequisites-panel" className="guide-panel">
+              <fieldset className="limits-prerequisites">
+                <legend>Before running the limits workflow, confirm:</legend>
+                {limitsPrerequisites.map((item) => (
+                  <label key={item.id} className="check">
+                    <span className="check-content">
+                      <input
+                        type="checkbox"
+                        checked={checkedLimitsPrerequisites[item.id] ?? false}
+                        onChange={(event) =>
+                          setCheckedLimitsPrerequisites((prev) => ({ ...prev, [item.id]: event.target.checked }))
+                        }
+                      />
+                      <span>{item.label}</span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+              <ol>
+                <li>Compile your Soroban contract to WebAssembly: <code>cargo build --target wasm32v1-none --release</code></li>
+                <li>Verify the WASM artifact exists at the expected path (default: <code>target/wasm32v1-none/release/contract.wasm</code>)</li>
+                <li>Ensure the target function is exported in your contract's ABI and callable from tests</li>
+                <li>Confirm the ramp parameter exists in the function signature and accepts numeric or collection types</li>
+              </ol>
+            </div>
+          )}
+        </article>
+
+        {/* Issue #83: Preflight checklist for limits workflow */}
+        <article className="guide-card">
+          <div className="guide-header">
+            <h3>Limits workflow: Preflight checklist</h3>
+            <button
+              type="button"
+              className="guide-toggle preflight-toggle"
+              aria-expanded={limitsPreflightOpen}
+              aria-controls="limits-preflight-panel"
+              onClick={() => setLimitsPreflightOpen((open) => !open)}
+            >
+              {limitsPreflightOpen ? "Hide checklist" : "Show checklist"}
+            </button>
+          </div>
+          {limitsPreflightOpen && (
+            <div id="limits-preflight-panel" className="guide-panel">
+              <fieldset className="limits-preflight">
+                <legend>Before hitting run, verify these:</legend>
+                {limitsPreflight.map((item) => (
+                  <label key={item.id} className="check">
+                    <span className="check-content">
+                      <input
+                        type="checkbox"
+                        checked={checkedLimitsPreflight[item.id] ?? false}
+                        onChange={(event) =>
+                          setCheckedLimitsPreflight((prev) => ({ ...prev, [item.id]: event.target.checked }))
+                        }
+                      />
+                      <span>{item.label}</span>
+                    </span>
+                  </label>
+                ))}
+              </fieldset>
+              <ol>
+                <li>Double-check the WASM artifact path matches your compiled output location</li>
+                <li>Confirm the function name exactly matches an exported contract symbol (case-sensitive)</li>
+                <li>Verify the ramp parameter is compatible with the ramping strategy (numeric types scale naturally; collections scale by count)</li>
+                <li>Test invocation arguments are prepared; the limits workflow will inject various values for the ramp parameter</li>
+              </ol>
+            </div>
+          )}
+        </article>
+
+        {/* Issue #86: Advanced options section for limits workflow */}
+        <article className="guide-card">
+          <div className="guide-header">
+            <h3>Limits workflow: Advanced options</h3>
+            <button
+              type="button"
+              className="guide-toggle"
+              aria-expanded={limitsAdvancedOpen}
+              aria-controls="limits-advanced-panel"
+              onClick={() => setLimitsAdvancedOpen((open) => !open)}
+            >
+              {limitsAdvancedOpen ? "Hide options" : "Show options"}
+            </button>
+          </div>
+          {limitsAdvancedOpen && (
+            <div id="limits-advanced-panel" className="guide-panel">
+              <p>
+                Customize limits workflow behavior with these advanced options. All are optional; defaults provide sensible baseline behavior.
+              </p>
+              <div className="advanced-options-grid">
+                {limitsAdvancedOptions.map((option) => (
+                  <div key={option.id} className="advanced-option">
+                    <label htmlFor={`advanced-${option.id}`}>
+                      {option.label}
+                    </label>
+                    {option.type === "number" ? (
+                      <input
+                        id={`advanced-${option.id}`}
+                        type="number"
+                        defaultValue={option.default}
+                        onChange={(e) =>
+                          setLimitsAdvancedValues((prev) => ({ ...prev, [option.id]: e.target.value }))
+                        }
+                        placeholder={option.default}
+                      />
+                    ) : (
+                      <input
+                        id={`advanced-${option.id}`}
+                        type="checkbox"
+                        defaultChecked={option.default === "true"}
+                        onChange={(e) =>
+                          setLimitsAdvancedValues((prev) => ({ ...prev, [option.id]: e.target.checked ? "true" : "false" }))
+                        }
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <dl className="advanced-options-reference">
+                <dt><code>--timeout</code></dt>
+                <dd>Maximum milliseconds per test invocation before timing out. Default: 5000ms. Increase for slow contract initialization or complex logic.</dd>
+
+                <dt><code>--sample-rate</code></dt>
+                <dd>Number of samples to collect while ramping the parameter. Default: 10. Lower values run faster; higher values provide finer granularity in resource curves.</dd>
+
+                <dt><code>--verbose</code></dt>
+                <dd>Emit detailed logging for each ramp step, including instruction counts and memory snapshots. Useful for debugging resource scaling patterns.</dd>
+
+                <dt><code>--dump-state</code></dt>
+                <dd>Write contract state snapshots after each test invocation. Helps identify state corruption or unexpected side effects across ramp steps.</dd>
+              </dl>
+            </div>
+          )}
+        </article>
+
+        {/* Issue #84: Command reference page for coverage workflow */}
+        <article className="guide-card">
+          <div className="guide-header">
+            <h3>Coverage workflow: Command reference</h3>
+            <button
+              type="button"
+              className="guide-toggle"
+              aria-expanded={coverageCommandReferenceOpen}
+              aria-controls="coverage-command-reference-panel"
+              onClick={() => setCoverageCommandReferenceOpen((open) => !open)}
+            >
+              {coverageCommandReferenceOpen ? "Hide reference" : "Show reference"}
+            </button>
+          </div>
+          {coverageCommandReferenceOpen && (
+            <div id="coverage-command-reference-panel" className="guide-panel">
+              <p>
+                The coverage workflow runs your Rust test suite through <code>cargo-llvm-cov</code> and produces machine-readable and human-friendly coverage reports.
+              </p>
+              <h4>Basic syntax</h4>
+              <pre role="region" aria-label="Coverage command syntax" tabIndex={0}>
+                <code>{`soroban-testkit coverage [OPTIONS] [PATH]\n\nOPTIONS:\n  --format <FORMAT>    Output format: html, lcov, or text [default: html]\n  --open              Automatically open HTML report in browser\n  --help              Print help information`}</code>
+              </pre>
+              <h4>Common usage patterns</h4>
+              <dl className="coverage-patterns">
+                <dt>Generate HTML report (default)</dt>
+                <dd><code>soroban-testkit coverage . --format html --open</code></dd>
+
+                <dt>Output machine-readable LCOV format</dt>
+                <dd><code>soroban-testkit coverage . --format lcov &gt; coverage.lcov</code></dd>
+
+                <dt>Terminal summary only</dt>
+                <dd><code>soroban-testkit coverage . --format text</code></dd>
+
+                <dt>Specific contract in workspace</dt>
+                <dd><code>soroban-testkit coverage ./contracts/my-contract --format html</code></dd>
+              </dl>
+              <h4>Output formats</h4>
+              <ul>
+                <li><strong>html:</strong> Interactive coverage dashboard. Click to drill down into files, functions, and coverage gaps. Best for local development.</li>
+                <li><strong>lcov:</strong> Machine-readable format compatible with CI/CD tools (GitHub Actions, GitLab CI, etc.). Use for automated gates and reporting.</li>
+                <li><strong>text:</strong> Simple summary to stdout. Fast for quick checks without file I/O.</li>
+              </ul>
+              <h4>Coverage interpretation</h4>
+              <ul>
+                <li><strong>Line coverage:</strong> Percentage of executable lines executed during the test run. Gaps often indicate error handling paths or edge cases.</li>
+                <li><strong>Branch coverage:</strong> Tracks both sides of conditional logic. High branch coverage means error paths and alternate flows are tested.</li>
+                <li><strong>Function coverage:</strong> Shows whether each function was invoked. Useful for identifying dead code and untested entry points.</li>
+              </ul>
+            </div>
+          )}
+        </article>
+
+        <section
+          className="command-reference"
+          id="audit-reference"
+          tabIndex={-1}
+          aria-labelledby="audit-reference-heading"
+        >
+          <div className="reference-header">
+            <p className="eyebrow">Command reference</p>
+            <h2 id="audit-reference-heading">Audit workflow, at a glance.</h2>
+            <p>
+              Use <code>soroban-testkit audit</code> to scan contract sources for authentication
+              gaps, arithmetic pitfalls, and TTL misuse. The scan is read-only and runs entirely
+              offline.
+            </p>
+          </div>
+          <div className="reference-grid">
+            <article className="reference-card">
+              <h3>Ready-to-run command</h3>
+              <pre aria-label="Audit command example"><code>{"soroban-testkit audit \\\n  ./src \\\n  --strict"}</code></pre>
+              <p>
+                Replace <code>./src</code> with the path to your contract source directory. Omit{" "}
+                <code>--strict</code> to treat warnings as informational only.
+              </p>
+            </article>
+            <article className="reference-card">
+              <h3>Arguments</h3>
+              <dl className="reference-arguments">
+                <div>
+                  <dt><code>path</code></dt>
+                  <dd>
+                    Contract source directory. Defaults to{" "}
+                    <code>{localFileGuides.audit.defaultPath}</code>.
+                  </dd>
+                </div>
+                <div>
+                  <dt><code>--strict</code></dt>
+                  <dd>Treat warning-level findings as errors and exit non-zero.</dd>
+                </div>
+              </dl>
+            </article>
+            <article className="reference-card">
+              <h3>Before you run it</h3>
+              <ol>
+                <li>Point the path at the directory that contains your <code>*.rs</code> source files.</li>
+                <li>Review auth and storage warnings first — they surface the most critical privilege issues.</li>
+                <li>Enable strict mode before release to make the audit gate your CI pipeline.</li>
+              </ol>
+              <p className="reference-note">
+                {localFileGuides.audit.offlineGuarantee}
+              </p>
+            </article>
+          </div>
+        </section>
+
         <section
           className="command-reference"
           id="limits-reference"
@@ -2382,21 +4615,31 @@ soroban-testkit = "0.2.0"`}</code>
       </section>
 
       <footer>
-        <span>Built for the Stellar developer ecosystem.</span>
-        <span className="footer-links">
-          <a href={CORE_REPO_URL}>Soroban Testkit core repository</a>
-          {/* #119 — changelog link */}
-          <a href={`${CORE_REPO_URL}/releases`}>Changelog</a>
-          {/* #174 — release notes link */}
-          <button type="button" className="footer-a11y-link" onClick={() => setReleaseNotesOpen(true)}>
-            Release notes
-          </button>
-          {/* #116 — accessibility statement */}
-          <button type="button" className="footer-a11y-link" onClick={() => setA11yOpen(true)}>
-            Accessibility statement
-          </button>
-        </span>
-        <span>Apache-2.0</span>
+        <div className="footer-col">
+          <span className="footer-brand">Soroban Testkit</span>
+          <p>Built for the Stellar developer ecosystem.</p>
+        </div>
+        <div className="footer-col">
+          <span className="footer-heading">Workflows</span>
+          <div className="footer-links">
+            <a href="#commands">CLI Workbench</a>
+            <a href={CORE_REPO_URL}>Soroban Testkit core repository</a>
+            {/* #119 — changelog link */}
+            <a href={`${CORE_REPO_URL}/releases`}>Changelog</a>
+            {/* #174 — release notes link */}
+            <button type="button" className="footer-a11y-link" onClick={() => setReleaseNotesOpen(true)}>
+              Release notes
+            </button>
+            {/* #116 — accessibility statement */}
+            <button type="button" className="footer-a11y-link" onClick={() => setA11yOpen(true)}>
+              Accessibility statement
+            </button>
+          </div>
+        </div>
+        <div className="footer-col footer-meta">
+          <span>Apache-2.0</span>
+          <span>Deterministic contract testing</span>
+        </div>
       </footer>
 
       {/* #174 — release notes dialog */}

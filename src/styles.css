@@ -2,8 +2,23 @@
 
 :root {
   /* Typography */
-  --font-sans: Manrope, sans-serif;
-  --font-mono: "DM Mono", monospace;
+  --font-sans: Manrope, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "DM Mono", SFMono-Regular, Consolas, monospace;
+
+  /* Shared Surface Tokens (#197) */
+  --surface-base: #061310;
+  --surface-elevated: #091916;
+  --surface-terminal: #07100e;
+  --surface-output: #020807;
+  --surface-card: #ffffff02;
+  --surface-card-hover: #66e2ad08;
+
+  /* Shared Border Tokens (#197) */
+  --border-subtle: #ffffff12;
+  --border-default: #ffffff1c;
+  --border-strong: #ffffff24;
+  --border-input: #ffffff1f;
+  --border-tab: #ffffff20;
 
   /* Consistent Vertical Rhythm & Spacing Tokens */
   --section-spacing: 100px;
@@ -48,15 +63,28 @@
 
   /* Accent Colors */
   --color-accent: #66e2ad;
+  --color-accent-dark: #062017;
   --color-accent-text-dark: #062017;
   --color-accent-subtle: #66e2ad0b;
   --color-accent-border: #66e2ad22;
   --color-accent-surface: #66e2ad0d;
 
+  /* Text Hierarchy Tokens */
+  --text-primary: #e9f4ef;
+  --text-secondary: #a9bbb4;
+  --text-muted: #6f817a;
+  --text-body: #91a39c;
+  --text-label: #a7b8b1;
+  --text-tab: #8ea099;
+  --text-code: #dbe9e3;
+  --text-num: #587068;
+
   /* Text Colors */
   --color-text-primary: #e9f4ef;
   --color-text-secondary: #a9bbb4;
   --color-text-muted: #6f817a;
+  /* #327: WCAG AA placeholder foreground on the dark input background. */
+  --color-placeholder: #a9bbb4;
   --color-text-body: #91a39c;
   --color-text-label: #a7b8b1;
   --color-text-tab: #8ea099;
@@ -70,6 +98,11 @@
   --color-border-input: #ffffff1f;
   --color-border-tab: #ffffff20;
 
+  /* Validation feedback (#329) */
+  --color-warning: #ffcc66;
+  --color-warning-bg: #ffcc660d;
+  --color-warning-border: #ffcc6633;
+
   /* Badges */
   --color-badge-required-bg: #66e2ad1a;
   --color-badge-required-text: #66e2ad;
@@ -77,6 +110,14 @@
   --color-badge-optional-bg: #ffffff10;
   --color-badge-optional-text: #8ea099;
   --color-badge-optional-border: #ffffff1a;
+  /* Issue #265: opaque light-surface variants. Their dark text keeps AA
+     contrast whether the badge sits on a light or a dark surface. */
+  --color-badge-required-bg-light: #d9f5e8;
+  --color-badge-required-text-light: #062017;
+  --color-badge-required-border-light: #66e2ad66;
+  --color-badge-optional-bg-light: #e8eeeb;
+  --color-badge-optional-text-light: #31443d;
+  --color-badge-optional-border-light: #8ea09966;
 
   /* Form Elements */
   --color-input-bg: #ffffff06;
@@ -98,6 +139,7 @@
   --space-6xl: 48px;
   --space-section: 100px;
   --page-padding: 5vw;
+  --tap-target-min: 44px;
 
   /* Radii */
   --radius-xs: 4px;
@@ -145,13 +187,47 @@
 
 * { box-sizing: border-box; }
 html { scroll-behavior: smooth; scroll-padding-top: 78px; }
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
+}
 body { margin: 0; min-width: 320px; background: radial-gradient(circle at 75% 8%, var(--color-canvas-gradient) 0, transparent 28rem), var(--color-canvas); }
-a { color: inherit; text-decoration: none; }
+a {
+  color: inherit;
+  text-decoration: none;
+  transition: color .15s ease, text-decoration .15s ease, transform .15s ease;
+}
+a:hover {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+a:active {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 2px;
+}
 button, input, select { font: inherit; }
 main { max-width: 1440px; margin: auto; overflow: hidden; }
 
+/* Skip-to-main-content link (#96) — hidden until focused */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: var(--page-padding);
+  z-index: 999;
+  padding: var(--space-md) var(--space-lg);
+  background: var(--color-accent);
+  color: var(--color-accent-text-dark);
+  font-weight: 600;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  transition: top .15s ease;
+}
+.skip-link:focus { top: var(--space-lg); }
+
 /* Navigation with reduced-width adaptation */
 nav {
+  position: relative;
   height: 78px;
   display: flex;
   align-items: center;
@@ -190,8 +266,28 @@ nav {
   max-width: 200px;
   overflow: hidden;
   text-overflow: ellipsis;
+  text-decoration: none;
 }
-.nav-links a:hover { color: var(--color-accent); }
+.nav-links a:hover {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 1.5px;
+}
+.nav-links a:active {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 2.5px;
+}
+.nav-links a[aria-current="location"],
+.nav-links a[aria-current="page"] {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 6px;
+  text-decoration-thickness: 2px;
+  font-weight: 600;
+}
 
 /* Theme toggle button */
 .theme-toggle {
@@ -216,9 +312,37 @@ nav {
 h1 { margin: var(--space-xl) 0 var(--space-3xl); font-size: clamp(3.4rem, 6.5vw, 7rem); line-height: .96; letter-spacing: -.065em; }
 .lede { max-width: 650px; color: var(--color-text-secondary); font-size: 1.15rem; line-height: 1.75; }
 .actions { display: flex; gap: var(--space-md); margin-top: 38px; }
-.button { padding: 13px 19px; border-radius: var(--radius-base); font-weight: 600; font-size: .9rem; cursor: pointer; }
+.button {
+  padding: 13px 19px;
+  border-radius: var(--radius-base);
+  font-weight: 600;
+  font-size: .9rem;
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease, background-color .15s ease;
+}
+.button:hover, a.button:hover {
+  text-decoration: none;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.button:active, a.button:active {
+  text-decoration: none;
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
 .primary { color: var(--color-accent-text-dark); background: var(--color-accent); border: 0; }
 .secondary { border: 1px solid var(--color-border-strong); background: transparent; color: var(--color-text-primary); }
+/* WCAG AA focus indicators for all button variants (#98) */
+.button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+
+/* #18 — every keyboard-focused interactive control gets a visible ring */
+button:focus-visible,
+a:focus-visible,
+[role="tab"]:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 3px;
+}
 
 /* Terminal */
 .terminal { background: var(--color-surface-terminal); border: 1px solid var(--color-border-default); border-radius: var(--radius-xl); box-shadow: 0 30px 80px #0008; transform: rotate(1deg); overflow: hidden; font-family: var(--font-mono); }
@@ -278,7 +402,23 @@ h2 { margin: var(--space-md) 0; font-size: clamp(2rem, 4vw, 4rem); letter-spacin
 .module-card-select:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 4px; }
 .module-card-links, .category-filter-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-md); }
 .module-card-links { margin-top: var(--space-xl); }
-.module-card-links a { color: var(--color-accent); font-size: .75rem; }
+.module-card-links a {
+  display: inline-flex;
+  align-items: center;
+  font: 500 .75rem var(--font-mono);
+  color: var(--color-accent);
+  padding: 2px 0;
+  text-decoration: none;
+}
+.module-card-links a:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.module-card-links a:active {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 2px;
+}
 .category-filter-bar { margin: var(--space-xl) 0; }
 .category-chip { padding: var(--space-xs) var(--space-md); border: 1px solid var(--color-border-default); border-radius: var(--radius-round); color: var(--color-text-secondary); background: transparent; cursor: pointer; }
 .category-chip.active { border-color: var(--color-accent); color: var(--color-accent); background: var(--color-accent-subtle); }
@@ -288,6 +428,13 @@ h2 { margin: var(--space-md) 0; font-size: clamp(2rem, 4vw, 4rem); letter-spacin
 .module-detail nav a { color: var(--color-accent); }
 .module-detail h2 { margin: var(--space-md) 0; }
 .module-detail > p:not(.eyebrow) { color: var(--color-text-body); line-height: 1.65; }
+.module-doc-section { margin: var(--space-3xl) 0; display: grid; gap: var(--space-md); }
+.module-doc-section h3 { margin-top: var(--space-md); }
+.module-doc-section p { color: var(--color-text-body); line-height: 1.65; }
+.module-code-block { border: 1px solid var(--color-border-default); border-radius: var(--radius-md); background: var(--color-surface-elevated); overflow: hidden; }
+.module-code-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-md); padding: var(--space-sm) var(--space-lg); border-bottom: 1px solid var(--color-border-default); color: var(--color-text-secondary); font-size: 0.9rem; }
+.module-code-block pre { margin: 0; padding: var(--space-lg); overflow-x: auto; line-height: 1.55; }
+.module-code-block pre:focus-visible { outline: 2px solid var(--color-accent); outline-offset: -2px; }
 
 /* Module Empty State */
 .module-empty-state {
@@ -341,11 +488,61 @@ h2 { margin: var(--space-md) 0; font-size: clamp(2rem, 4vw, 4rem); letter-spacin
 /* Commands / CLI Workbench */
 .commands { display: grid; grid-template-columns: .8fr 1.2fr; gap: 8vw; background: var(--color-surface); }
 .command-copy > p:not(.eyebrow) { color: var(--color-text-body); line-height: 1.7; }
-.command-tabs { display: flex; gap: var(--space-sm); margin-top: 36px; }
+/* #330 — Keep switchers in DOM order (left-to-right, top-to-bottom when wrapped) at every breakpoint. */
+.workflow-tabs { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: var(--space-3xl); }
+.command-tabs { display: flex; flex-wrap: wrap; gap: var(--space-sm); margin-top: 36px; }
 .command-tabs button { border: 1px solid var(--color-border-tab); color: var(--color-text-tab); background: transparent; padding: 9px var(--space-base); border-radius: var(--radius-sm); cursor: pointer; font: .75rem var(--font-mono); }
 .command-tabs button.active { border-color: var(--color-accent); color: var(--color-accent); background: var(--color-accent-subtle); }
 .description { min-height: 48px; }
 .builder { padding: var(--space-5xl); background: var(--color-canvas); border: 1px solid var(--color-border-default); border-radius: var(--radius-lg); }
+
+/* Command Summary Card */
+.summary-card {
+  margin-top: var(--space-3xl);
+  padding: var(--space-xl);
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-lg);
+}
+.summary-card:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.summary-workflow {
+  font: 700 1rem var(--font-mono);
+  color: var(--color-accent);
+  margin: var(--space-xs) 0 var(--space-md);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.summary-settings {
+  display: grid;
+  gap: var(--space-xs);
+  margin: 0 0 var(--space-md);
+  padding: 0;
+}
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .82rem;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+.summary-row dt {
+  color: var(--color-text-secondary);
+}
+.summary-row dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  color: var(--color-text-primary);
+}
+.summary-note {
+  margin: 0;
+  font-size: .75rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
 
 /* Field & Required/Optional distinction */
 label { display: grid; gap: 9px; margin-bottom: var(--space-2xl); color: var(--color-text-label); font-size: .78rem; }
@@ -379,20 +576,97 @@ label { display: grid; gap: 9px; margin-bottom: var(--space-2xl); color: var(--c
 
 .row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-xl); }
 input, select { width: 100%; padding: var(--space-md) 13px; color: var(--color-text-primary); background: var(--color-input-bg); border: 1px solid var(--color-border-input); border-radius: var(--radius-sm); outline: none; transition: border-color .2s ease, box-shadow .2s ease; }
+/* #327: avoid browser defaults that dim placeholders below WCAG AA. */
+input::placeholder, textarea::placeholder { color: var(--color-placeholder); opacity: 1; }
+
+/* #324: native radio controls keep their accessible names and visible focus. */
+.format-fieldset { border: 0; padding: 0; margin: 0 0 var(--space-2xl); min-width: 0; }
+.format-fieldset legend { padding: 0; margin-bottom: var(--space-md); color: var(--color-text-label); font-size: .78rem; }
+.format-fieldset legend .badge { margin-left: var(--space-md); }
+.format-radio-group { display: flex; flex-wrap: wrap; gap: var(--space-md); }
+.format-radio-option { display: inline-flex; align-items: center; gap: var(--space-xs); margin: 0; padding: var(--space-sm) var(--space-md); border: 1px solid var(--color-border-input); border-radius: var(--radius-sm); cursor: pointer; color: var(--color-text-primary); }
+.format-radio-option input { width: auto; margin: 0; accent-color: var(--color-accent); }
+.format-radio-option:focus-within { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+
+/* #337: the original card button navigates; a second button really expands. */
+.module-card-disclosure { display: block; margin-top: var(--space-md); padding: var(--space-xs) 0; border: 0; border-bottom: 1px solid currentColor; background: transparent; color: var(--color-accent); font-size: .76rem; cursor: pointer; }
+.module-card-disclosure:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.module-card-details[hidden] { display: none; }
+.module-card-details { margin-top: var(--space-md); font-size: .8rem; color: var(--color-text-body); }
+.module-card-details p { margin: 0 0 var(--space-xs); }
+.module-card-details ul { margin: 0; padding-left: var(--space-xl); }
+
 input:focus, select:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-subtle); }
 input:invalid, select:invalid { border-color: #ff6b6b; }
 input:invalid:focus, select:invalid:focus { border-color: #ff6b6b; box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1); }
 .check { display: flex; align-items: center; justify-content: space-between; }
 .check-content { display: flex; align-items: center; gap: var(--space-sm); }
 .check input { width: auto; accent-color: var(--color-accent); }
+
+/* Command output and actions (#194, #205) */
 .output { display: flex; align-items: center; gap: 15px; padding: var(--space-lg); background: var(--color-surface-output); border-radius: var(--radius-md); }
-.output code { flex: 1; color: var(--color-accent); font: .75rem/1.6 var(--font-mono); overflow-wrap: anywhere; }
-.output button { color: var(--color-canvas); background: var(--color-accent); border: 0; border-radius: var(--radius-xs); padding: var(--space-sm) var(--space-md); cursor: pointer; font-weight: 600; }
+.output code { flex: 1; color: var(--color-accent); font: .75rem/1.6 var(--font-mono); overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }
+.output code:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; border-radius: var(--radius-xs); }
+.output-actions { display: flex; align-items: center; gap: 10px; }
+.output button { color: var(--color-canvas); background: var(--color-accent); border: 0; border-radius: var(--radius-xs); padding: var(--space-sm) var(--space-md); cursor: pointer; font-weight: 600; white-space: nowrap; }
+.output button:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 3px; }
+.validation-hint {
+  margin: 0 0 var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border: 1px solid var(--color-warning-border);
+  border-left-width: 4px;
+  border-radius: var(--radius-sm);
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  font-size: .8rem;
+  line-height: 1.5;
+}
+
+.output button.button-reset { color: var(--text-secondary); background: transparent; border: 1px solid var(--border-strong); font-weight: 500; }
+.output button.button-reset:hover { color: var(--text-primary); border-color: var(--color-accent); }
+
+/* Compact command output layout for 320-pixel screens (#194) */
+@media (max-width: 480px) {
+  .output {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 12px;
+  }
+  .output code {
+    width: 100%;
+    font-size: .72rem;
+    line-height: 1.5;
+    word-break: break-all;
+  }
+  .output-actions {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+  .output button {
+    flex: 1;
+    text-align: center;
+    padding: 10px;
+  }
+}
+
+/* #17 — visible clipboard failure/validation feedback */
+.copy-error {
+  margin-block-start: var(--space-md);
+  padding: 10px 14px;
+  border: 1px solid #ff6b6b;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 107, 107, 0.1);
+  color: #ff9b9b;
+  font-size: .85rem;
+}
 
 /* Issue #144 & #145: Copy options styling */
 .copy-options { display: flex; gap: var(--space-md); margin-block-start: var(--space-md); flex-wrap: wrap; }
 .copy-options button { flex: 1; min-width: 200px; }
 .copy-options button:disabled { opacity: 0.5; cursor: not-allowed; }
+.copy-comments-preference { display: inline-flex; align-items: center; gap: var(--space-sm); }
 
 /* Issue #141 & #143: Command actions styling */
 .command-actions { display: flex; gap: var(--space-md); margin-block-start: var(--space-md); flex-wrap: wrap; }
@@ -400,7 +674,57 @@ input:invalid:focus, select:invalid:focus { border-color: #ff6b6b; box-shadow: 0
 
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border-width: 0; }
 
-footer { display: flex; justify-content: space-between; padding: 34px var(--page-padding); border-top: 1px solid var(--color-border-subtle); color: var(--color-text-muted); font-size: .78rem; }
+/* Responsive footer layout with wrapping columns (#195) */
+footer {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
+  padding: 48px var(--page-padding);
+  border-top: 1px solid var(--color-border-subtle);
+  color: var(--color-text-muted);
+  font-size: .78rem;
+}
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 150px;
+}
+.footer-brand {
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: .85rem;
+}
+.footer-col p {
+  margin: 0;
+  line-height: 1.5;
+  color: var(--text-body);
+  max-width: 280px;
+}
+.footer-heading {
+  color: var(--text-secondary);
+  font-size: .7rem;
+  font-family: "DM Mono", monospace;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-weight: 500;
+}
+.footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.footer-links a:hover {
+  color: var(--color-accent);
+}
+.footer-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  color: var(--text-muted);
+}
 
 /* High-Density Display Refinement (#190) */
 @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi), (min-resolution: 2dppx) {
@@ -437,13 +761,36 @@ footer { display: flex; justify-content: space-between; padding: 34px var(--page
 
 /* Issue #184: Large-text layout check for hero section */
 @media (min-width: 1200px) {
-  .hero h1 { font-size: 6rem; line-height: .98; }
+  /* Let hero grid columns shrink rather than clip oversized content (#325). */
+  .hero { grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr); }
+  .hero > * { min-width: 0; }
+  /* Reach the original 6rem heading by ~1400px without overflowing at 1200px. */
+  .hero h1 { font-size: clamp(4.5rem, 6.9vw, 6rem); line-height: .98; overflow-wrap: anywhere; }
   .hero .lede { font-size: 1.2rem; line-height: 1.8; }
+  .hero .actions .button,
+  .hero .repo-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: var(--tap-target-min);
+  }
 }
 
 /* Issue #182: Compact two-column module layout for tablet widths */
 @media (min-width: 601px) and (max-width: 900px) {
   .module-grid { grid-template-columns: repeat(2, 1fr); }
+
+  /* #263: the filter shares a row with the Clear button in this grid. Let it
+     use the full header width with a 16px font and a 44px touch target so it
+     stays readable and focusable without zoom at the breakpoint edges. */
+  .module-filter-bar { max-width: 100%; }
+  .module-filter-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    min-height: 44px;
+    font-size: 16px;
+  }
+  .module-filter-clear { min-height: 44px; }
 }
 
 @media (max-width: 900px) {
@@ -479,13 +826,36 @@ footer { display: flex; justify-content: space-between; padding: 34px var(--page
   }
 }
 
-/* Issue #183: Landscape phone layout for command form */
+/* Issue #183: Landscape phone layout for command form.
+   #333: use the documented spacing scale and keep every control inside the
+   viewport so short, wide viewports cannot clip or horizontally scroll. */
 @media (min-width: 541px) and (max-width: 900px) and (max-height: 600px) {
-  .commands { padding: 60px var(--page-padding); }
+  .commands { padding: calc(var(--space-6xl) + var(--space-md)) var(--page-padding); }
   .builder { padding: var(--space-3xl); }
   label { margin-bottom: var(--space-lg); gap: var(--space-xs); }
   .command-tabs { margin-top: var(--space-3xl); }
-  .description { min-height: 36px; font-size: .9rem; }
+  .description { min-height: calc(var(--space-5xl) + var(--space-2xs)); font-size: .9rem; }
+
+  /* Grid and flex children need an explicit zero minimum before they can
+     shrink; otherwise their intrinsic width forces overflow in this range. */
+  .commands, .command-copy, .builder, .advanced-command-block { min-width: 0; max-width: 100%; }
+  .builder input, .builder select, .builder textarea { min-width: 0; max-width: 100%; }
+  .row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .command-tabs, .output, .copy-options, .command-actions { flex-wrap: wrap; }
+  .output > *, .copy-options > *, .command-actions > * { min-width: 0; max-width: 100%; }
+  .copy-options button { min-width: 0; }
+  .command-history-item { flex-wrap: wrap; }
+  .history-command { flex-basis: 100%; min-width: 0; }
+  .output code, .history-command { overflow-wrap: anywhere; }
+
+  /* #345 — keep keyboard focus unmistakable against compact landscape
+     surfaces without changing focus treatment at unrelated breakpoints. */
+  .builder :is(button, input, select, textarea, [tabindex="0"]):focus-visible,
+  .output :is(button, code[tabindex="0"]):focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 3px;
+    box-shadow: 0 0 0 1px var(--color-canvas);
+  }
 }
 
 /* Issue #180: Prevent navigation links from wrapping awkwardly on small screens */
@@ -507,6 +877,21 @@ footer { display: flex; justify-content: space-between; padding: 34px var(--page
     flex: 0 1 auto;
     white-space: nowrap;
   }
+}
+
+/* #331 — 44px minimum tap targets in the portrait phone module list. */
+@media (max-width: 539px) {
+  .module-filter-clear,
+  .category-chip,
+  .module-card-links a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    padding-block: 0;
+  }
+  .module-card-select { min-height: 44px; }
 }
 
 @media (max-width: 540px) {
@@ -560,6 +945,136 @@ footer { display: flex; justify-content: space-between; padding: 34px var(--page
   }
 }
 
+/* High-contrast and forced-colors mode support without losing control boundaries (#107) */
+@media (forced-colors: active) {
+  /* Control boundaries for interactive buttons */
+  .button,
+  button,
+  .primary,
+  .secondary {
+    border: 2px solid ButtonBorder !important;
+    outline: 1px solid transparent;
+  }
+
+  .primary {
+    background: Highlight !important;
+    color: HighlightText !important;
+    border-color: Highlight !important;
+  }
+
+  .button:hover,
+  button:hover {
+    border-color: Highlight !important;
+  }
+
+  .button:focus-visible,
+  button:focus-visible {
+    outline: 3px solid Highlight !important;
+    outline-offset: 2px !important;
+  }
+
+  /* Form inputs and controls preserve explicit field borders */
+  input,
+  select,
+  textarea,
+  .module-filter-input {
+    border: 2px solid FieldBorder !important;
+    color: FieldText !important;
+    background: Field !important;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus,
+  .module-filter-input:focus {
+    border-color: Highlight !important;
+    outline: 2px solid Highlight !important;
+    outline-offset: 1px !important;
+  }
+
+  /* Cards, articles, and regions maintain distinct visible borders */
+  .module-grid article,
+  .summary-card,
+  .builder,
+  .terminal,
+  .guide-card,
+  .install-guide,
+  .install-step,
+  .comparison {
+    border: 1px solid CanvasText !important;
+  }
+
+  /* Command tabs / workflow buttons */
+  .command-tabs button {
+    border: 1px solid ButtonBorder !important;
+  }
+
+  .command-tabs button.active,
+  .command-tabs button[aria-pressed="true"] {
+    border: 2px solid Highlight !important;
+    background: Highlight !important;
+    color: HighlightText !important;
+  }
+
+  /* Badges */
+  .badge,
+  .badge-required,
+  .badge-optional {
+    border: 1px solid CanvasText !important;
+  }
+
+  /* Checkboxes */
+  .check input[type="checkbox"] {
+    outline: 1px solid CanvasText !important;
+  }
+
+  /* Links */
+  a:hover,
+  a:active {
+    text-decoration: underline !important;
+    text-decoration-color: Highlight !important;
+  }
+
+  .nav-links a[aria-current="location"],
+  .nav-links a[aria-current="page"] {
+    border-bottom: 2px solid Highlight !important;
+  }
+}
+
+@media (prefers-contrast: more) {
+  :root {
+    --color-border-subtle: #ffffff33;
+    --color-border-default: #ffffff44;
+    --color-border-strong: #ffffff66;
+    --color-border-input: #ffffff55;
+    --color-border-tab: #ffffff55;
+    --color-text-secondary: #c2d6ce;
+    --color-text-muted: #8ea39b;
+  }
+
+  .button,
+  button {
+    border-width: 2px;
+  }
+
+  input,
+  select,
+  textarea {
+    border-width: 2px;
+  }
+
+  .module-grid article {
+    border-width: 1px;
+    border-color: var(--color-border-strong);
+  }
+
+  a:hover,
+  a:active {
+    text-decoration: underline;
+    text-decoration-thickness: 2px;
+  }
+}
+
 /* #117 — mobile nav toggle */
 .mobile-menu-toggle {
   display: none;
@@ -575,7 +1090,7 @@ footer { display: flex; justify-content: space-between; padding: 34px var(--page
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
-@media (max-width: 768px) {
+@media (max-width: 960px) {
   .mobile-menu-toggle { display: block; }
   .nav-links {
     display: none;
@@ -587,6 +1102,9 @@ footer { display: flex; justify-content: space-between; padding: 34px var(--page
     background: var(--color-surface);
     border-bottom: 1px solid var(--color-border-subtle);
     padding: var(--space-md);
+    max-height: calc(100dvh - 78px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
     z-index: 100;
   }
   .nav-links[data-open="true"] { display: flex; }
@@ -1255,6 +1773,10 @@ footer { display: flex; justify-content: space-between; padding: 34px var(--page
   .guide-toggle {
     width: 100%;
   }
+  .preflight-toggle {
+    min-height: var(--tap-target-min);
+    padding: var(--space-sm) var(--space-lg);
+  }
 }
 
 /* #147 — command history panel */
@@ -1347,4 +1869,295 @@ footer { display: flex; justify-content: space-between; padding: 34px var(--page
   margin-top: var(--space-md);
   align-self: flex-start;
 }
->>>>>>> upstream/main
+ feat/issues-190-192-202-display-rhythm-theme
+ upstream/main
+
+
+@media (max-width: 600px) {
+  footer {
+    flex-direction: column;
+    gap: 24px;
+    padding: 32px 22px;
+  }
+}
+/* Issue #83, #85, #86: Limits and coverage guide panels */
+.guide-panel {
+  background: var(--color-surface-card);
+  border: 1px solid var(--color-border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-3xl);
+  margin-top: var(--space-lg);
+}
+
+.guide-panel ol, .guide-panel ul {
+  margin: var(--space-lg) 0;
+  padding-left: 1.5rem;
+  color: var(--color-text-body);
+  line-height: 1.65;
+}
+
+.guide-panel li {
+  margin-bottom: var(--space-md);
+}
+
+.guide-panel code {
+  background: var(--color-surface-output);
+  padding: 2px var(--space-xs);
+  border-radius: var(--radius-xs);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  color: var(--color-accent);
+}
+
+.guide-panel h4 {
+  margin: var(--space-3xl) 0 var(--space-md);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.guide-panel h4:first-child {
+  margin-top: 0;
+}
+
+.guide-panel .guide-definitions {
+  margin: var(--space-lg) 0;
+}
+
+.guide-panel .guide-definitions dt {
+  margin-top: var(--space-md);
+  font-weight: 600;
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+.guide-panel .guide-definitions dt:first-child {
+  margin-top: 0;
+}
+
+.guide-panel .guide-definitions dd {
+  margin: var(--space-xs) 0 0 0;
+  color: var(--color-text-body);
+  line-height: 1.6;
+}
+
+.guide-panel .guide-note {
+  margin-top: var(--space-xl);
+  padding: var(--space-lg);
+  background: var(--color-accent-subtle);
+  border-left: 3px solid var(--color-accent);
+  border-radius: var(--radius-xs);
+  color: var(--color-text-secondary);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+/* Issue #85 & #83: Checklist styling for limits prerequisites and preflight */
+.limits-prerequisites,
+.limits-preflight,
+.coverage-preflight,
+.audit-prerequisites {
+  border: none;
+  margin: 0 0 var(--space-xl) 0;
+  padding: 0;
+}
+
+.limits-prerequisites legend,
+.limits-preflight legend,
+.coverage-preflight legend,
+.audit-prerequisites legend {
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-lg);
+  display: block;
+}
+
+/* Issue #86: Advanced options styling */
+.advanced-options-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+  gap: var(--space-3xl);
+  margin: var(--space-xl) 0;
+  padding: var(--space-lg);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+}
+
+.advanced-option {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.advanced-option label {
+  font-weight: 500;
+  color: var(--color-text-label);
+  font-size: 0.95rem;
+}
+
+.advanced-option input[type="number"],
+.advanced-option input[type="text"] {
+  background: var(--color-surface-output);
+  border: 1px solid var(--color-border-input);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-sm);
+  color: var(--color-text-primary);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+}
+
+.advanced-option input[type="number"]:focus,
+.advanced-option input[type="text"]:focus {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+  border-color: var(--color-accent);
+}
+
+.advanced-option input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-accent);
+  cursor: pointer;
+}
+
+.advanced-options-reference {
+  margin: var(--space-xl) 0 0 0;
+  padding: 0;
+}
+
+.advanced-options-reference dt {
+  margin-top: var(--space-md);
+  font-weight: 600;
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+}
+
+.advanced-options-reference dt:first-child {
+  margin-top: 0;
+}
+
+.advanced-options-reference dd {
+  margin: var(--space-xs) 0 0 0;
+  color: var(--color-text-body);
+  line-height: 1.6;
+}
+
+/* Issue #84: Coverage command reference styling */
+.coverage-patterns {
+  margin: var(--space-lg) 0;
+  padding: 0;
+}
+
+.coverage-patterns dt {
+  margin-top: var(--space-md);
+  font-weight: 600;
+  color: var(--color-accent);
+}
+
+.coverage-patterns dt:first-child {
+  margin-top: 0;
+}
+
+.coverage-patterns dd {
+  margin: var(--space-xs) 0 0 0;
+  color: var(--color-text-body);
+  font-family: var(--font-mono);
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+@media (max-width: 768px) {
+  .advanced-options-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Keyboard and 320px reflow regressions (#109, #110): protect focus and
+   prevent intrinsically sized grid/flex children from escaping the viewport. */
+main :is(a[href], button, input, select, textarea, [tabindex="0"]):focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+.skip-link:focus-visible { outline-color: var(--color-accent-text-dark); }
+.commands, .command-copy, .builder, .comparison, .comparison-config,
+.comparison-config .row, .output, .copy-options, .command-actions {
+  min-width: 0;
+}
+.commands { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); }
+@media (max-width: 900px) {
+  .commands { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 540px) {
+  .builder { padding: var(--space-md); }
+  .comparison, .comparison-config { max-width: 100%; }
+  .comparison-config .row { grid-template-columns: minmax(0, 1fr); }
+  .builder input, .builder select, .comparison input, .comparison select {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .output, .copy-options, .command-actions { flex-wrap: wrap; }
+  .output > *, .copy-options > *, .command-actions > * { min-width: 0; max-width: 100%; }
+}
+
+/* Native focus on scrollable code samples and the skip link. */
+main pre[tabindex="0"]:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+@media (max-width: 540px) {
+  .commands { display: block; }
+  .command-copy, .builder { width: 100%; }
+  .command-copy { margin-bottom: var(--space-3xl); }
+  .builder { padding: var(--space-sm); }
+  .output button { overflow-wrap: anywhere; }
+}
+
+/* Critical focus contrast for explicitly focusable reference code. */
+.quick-ref-item pre:focus-visible, .quick-reference-card pre:focus-visible,
+.reference-card pre:focus-visible, .reference-example-steps pre:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+}
+/* Keep the top skip link in the viewport even when a tall page scrolls. */
+.skip-link { position: fixed; top: -100px; }
+.skip-link:focus, .skip-link:focus-visible { top: var(--space-lg); }
+@media (max-width: 540px) {
+  /* Avoid viewport-wide overflow from grid min-content and long CLI examples. */
+  main { width: 100%; max-width: 100vw; box-sizing: border-box; }
+  .hero, .install, .modules, .docs, .feature-matrix,
+  .glossary, .commands, .guides, .quick-reference-card,
+  .command-copy, .builder {
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+  .hero { grid-template-columns: minmax(0, 1fr); }
+  .hero > *, .commands > * { min-width: 0; }
+  .install-steps, .module-grid, .module-grid article { min-width: 0; }
+  .builder input, .builder select, .builder textarea { box-sizing: border-box; }
+  .quick-reference-card pre, .reference-card pre, .output code {
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Skip-link focus transitions must not leave keyboard users looking offscreen. */
+.skip-link { transition: none; }
+
+/* #348, #351 — compact status copy for command history and Audit editor. */
+.command-history-empty,
+.advanced-editor-count {
+  margin: 0;
+  color: var(--color-text-secondary);
+  font-size: .85rem;
+}
+.advanced-editor-count {
+  margin-top: calc(-1 * var(--space-sm));
+  margin-bottom: var(--space-md);
+  font-family: var(--font-mono);
+}
+ main
